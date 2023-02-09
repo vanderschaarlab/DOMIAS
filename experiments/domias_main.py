@@ -11,7 +11,7 @@ from typing import Dict, Optional, Union
 import numpy as np
 import pandas as pd
 import torch
-from ctgan import CTGAN
+from ctgan import CTGANSynthesizer
 from scipy import stats
 from scipy.stats import multivariate_normal
 from sdv.tabular import TVAE
@@ -24,6 +24,8 @@ from synthcity.plugins import Plugins
 from domias.baselines import baselines, compute_metrics_baseline
 from domias.bnaf.density_estimation import compute_log_p_x, density_estimator_trainer
 from domias.metrics.wd import compute_wd
+
+pd.options.mode.chained_assignment = None
 
 workspace = Path("synth_folder")
 workspace.mkdir(parents=True, exist_ok=True)
@@ -297,7 +299,7 @@ def evaluate(
         syn_model = TVAE(epochs=TRAINING_EPOCH)
         syn_model.fit(df)
     elif gan_method == "CTGAN":
-        syn_model = CTGAN(epochs=TRAINING_EPOCH)
+        syn_model = CTGANSynthesizer(epochs=TRAINING_EPOCH)
         syn_model.fit(df)
     elif gan_method == "KDE":
         kde_model = stats.gaussian_kde(training_set.transpose(1, 0))
@@ -389,7 +391,7 @@ def evaluate(
             [np.ones(training_set.shape[0]), np.zeros(test_set.shape[0])]
         ).astype(bool)
         # build another GAN for hayes and GAN_leak_cal
-        ctgan = CTGAN(epochs=200)
+        ctgan = CTGANSynthesizer(epochs=200)
         samples.columns = [str(_) for _ in range(dataset.shape[1])]
         ctgan.fit(samples)  # train a CTGAN on the generated examples
 
