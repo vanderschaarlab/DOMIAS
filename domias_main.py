@@ -1,8 +1,28 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
+# future
+from __future__ import absolute_import, division, print_function
+
+# stdlib
 import argparse
+import os
+from typing import Dict, Union
+
+# third party
+import numpy as np
+import pandas as pd
 import torch
+from ctgan import CTGANSynthesizer
+from scipy import stats
+from scipy.stats import multivariate_normal
+from sdv.tabular import TVAE
+from sklearn import metrics
+from sklearn.datasets import fetch_california_housing, fetch_covtype, load_digits
+from sklearn.preprocessing import StandardScaler
+from synthcity.plugins import Plugins
+
+# domias absolute
+from domias.baselines import baselines, compute_metrics_baseline
+from domias.bnaf.density_estimation import compute_log_p_x, density_estimator_trainer
+from domias.metrics.combined import compute_metrics
 
 # from scipy.stats import norm
 parser = argparse.ArgumentParser()
@@ -70,7 +90,7 @@ parser.add_argument(
     "--dataset",
     type=str,
     default="SynthGaussian",
-    choices=["MAGGIC", "housing", "synthetic", "Digits", "Covtype", "SynthGaussian"],
+    choices=["housing", "synthetic", "Digits", "Covtype", "SynthGaussian"],
 )
 parser.add_argument("--learning_rate", type=float, default=1e-2)
 parser.add_argument("--batch_dim", type=int, default=50)
@@ -105,65 +125,13 @@ if args.gpu_idx is not None:
     torch.cuda.set_device(args.gpu_idx)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-from bnaf.bnaf_den_est import *
-from baselines_stable import *
-from bnaf.datasets import *
-import numpy as np
-import pandas as pd
-from ctgan import CTGANSynthesizer
-from ctgan import load_demo
-import ctgan
-from sklearn.model_selection import train_test_split
-from sdv.tabular import TVAE
-from sdv.evaluation import evaluate
-from scipy import stats
-from sklearn import metrics
-from sklearn.metrics import accuracy_score
-from metrics.combined import compute_metrics
-import os
-from metrics.feature_distribution import feature_distribution
-from metrics.compute_wd import compute_wd
-from metrics.compute_identifiability import compute_identifiability
-
-if args.gan_method not in ["TVAE", "KDE", "CTGAN"]:
-    from synthcity.plugins import Plugins
 os.makedirs("results_folder", exist_ok=True)
 
+performance_logger: Dict = {}
 
-# %% Import necessary functions
-# from data_loader import load_adult_data
+if args.dataset == "housing":
 
-# %% Experiment main function
-def compute_bw(X, X2=None, num_runs=10):
-    p_t = stats.gaussian_kde(X.transpose(1, 0), bw_method="silverman")
-    bw_max = p_t.scotts_factor()
-    bws = np.logspace(np.log(bw_max / 3), np.log(bw_max * 1), num_runs, base=np.exp(1))
-    scores = np.zeros(num_runs)
-    for i, bw in enumerate(bws):
-        if X2 is None:
-            X, X2 = train_test_split(X, test_size=0.1)
-        p_t = stats.gaussian_kde(X.transpose(1, 0), bw_method=bw)
-        scores[i] = np.mean(np.log(1000 * p_t(X2.transpose(1, 0))))
-        print("bw", i, ":", bw, " - score:", scores[i])
-
-    return bws[np.argmax(scores)]
-
-
-performance_logger = {}
-
-""" 1. load dataset"""
-if args.dataset == "MAGGIC":
-    dataset = MAGGIC("")
-    dataset = np.vstack((dataset.train.x, dataset.val.x, dataset.test.x))
-    np.random.seed(1)
-    np.random.shuffle(dataset)
-    print("dataset size,", dataset.shape)
-    ndata = dataset.shape[0]
-elif args.dataset == "housing":
-    from sklearn.datasets import fetch_california_housing
-    from sklearn.preprocessing import StandardScaler
-
-    def data_loader():
+    def data_loader() -> np.ndarray:
         # np.random.multivariate_normal([0],[[1]], n1)*std1 # non-training data
         scaler = StandardScaler()
         X = fetch_california_housing().data
@@ -178,9 +146,6 @@ elif args.dataset == "synthetic":
     print("dataset size,", dataset.shape)
     ndata = dataset.shape[0]
 elif args.dataset == "Digits":
-    from sklearn.datasets import load_digits
-    from sklearn.preprocessing import StandardScaler
-
     scaler = StandardScaler()
     dataset = load_digits().data
     dataset = scaler.fit_transform(dataset)
@@ -190,9 +155,6 @@ elif args.dataset == "Digits":
     print("dataset size,", dataset.shape)
     ndata = dataset.shape[0]
 elif args.dataset == "Covtype":
-    from sklearn.datasets import fetch_covtype
-    from sklearn.preprocessing import StandardScaler
-
     scaler = StandardScaler()
     dataset = fetch_covtype().data
     dataset = scaler.fit_transform(dataset)
@@ -207,33 +169,32 @@ elif args.dataset == "SynthGaussian":
     ndata = dataset.shape[0]
 
 
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
-
 class gaussian:
-    def __init__(self, X):
+    def __init__(self, X: np.ndarray) -> None:
         var = np.std(X, axis=0) ** 2
         mean = np.mean(X, axis=0)
         self.rv = multivariate_normal(mean, np.diag(var))
 
-    def pdf(self, Z):
+    def pdf(self, Z: np.ndarray) -> np.ndarray:
         return self.rv.pdf(Z)
 
 
 class normal_func:
-    def __init__(self, X):
+    def __init__(self, X: np.ndarray) -> None:
         self.var = np.ones_like(np.std(X, axis=0) ** 2)
         self.mean = np.zeros_like(np.mean(X, axis=0))
 
-    def pdf(self, Z):
+    def pdf(self, Z: np.ndarray) -> np.ndarray:
         return multivariate_normal.pdf(Z, self.mean, np.diag(self.var))
         # return multivariate_normal.pdf(Z, np.zeros_like(self.mean), np.diag(np.ones_like(self.var)))
 
 
 class normal_func_feat:
-    def __init__(self, X, continuous=[1, 0, 0, 0, 0, 0, 0, 0]):
+    def __init__(
+        self,
+        X: np.ndarray,
+        continuous: Union[list, str, np.ndarray] = [1, 0, 0, 0, 0, 0, 0, 0],
+    ) -> None:
         if continuous == "all":
             self.feat = np.ones(X.shape[1]).astype(bool)
         else:
@@ -252,7 +213,7 @@ class normal_func_feat:
         self.mean = np.mean(X[:, self.feat], axis=0)
         # self.rv = multivariate_normal(mean, np.diag(var))
 
-    def pdf(self, Z):
+    def pdf(self, Z: np.ndarray) -> np.ndarray:
         return multivariate_normal.pdf(Z[:, self.feat], self.mean, np.diag(self.var))
 
 
@@ -413,13 +374,11 @@ for SIZE_PARAM in args.training_size_list:
                         samples.values,
                         samples_val.values[: int(0.5 * N_DATA_GEN)],
                         samples_val.values[int(0.5 * N_DATA_GEN) :],
-                        args=args,
                     )
                     _data, model_data = density_estimator_trainer(
                         addition_set,
                         addition_set2[: int(0.5 * ADDITION_SIZE)],
                         addition_set2[: int(0.5 * ADDITION_SIZE)],
-                        args=args,
                     )
                     p_G_train = (
                         compute_log_p_x(
@@ -448,10 +407,6 @@ for SIZE_PARAM in args.training_size_list:
                     p_G_train = density_gen(training_set.transpose(1, 0))
                     p_G_test = density_gen(test_set.transpose(1, 0))
 
-                #                     print(args.device, device)
-                #                     _gen, model_gen = density_estimator_trainer(samples.values, samples_val.values[:int(0.5*N_DATA_GEN)], samples_val.values[int(0.5*N_DATA_GEN):], args=args)
-                #                     p_G_train = compute_log_p_x(model_gen, torch.as_tensor(training_set).float().to(device)).cpu().detach().numpy()
-                #                     p_G_test = compute_log_p_x(model_gen, torch.as_tensor(test_set).float().to(device)).cpu().detach().numpy()
                 X_test_4baseline = np.concatenate([training_set, test_set])
                 Y_test_4baseline = np.concatenate(
                     [np.ones(training_set.shape[0]), np.zeros(test_set.shape[0])]

@@ -1,21 +1,36 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+# future
+from __future__ import absolute_import, division, print_function
 
-PATH_CELEB_REPRESENTATION = f"celebA_representation"
+# stdlib
 import argparse
+import os
+from typing import Dict
+
+# third party
+import numpy as np
+import pandas as pd
 import torch
+from ctgan import CTGANSynthesizer
+from scipy import stats
+from sklearn import metrics
+from sklearn.datasets import fetch_california_housing
+from sklearn.preprocessing import StandardScaler
+
+# domias absolute
+from domias.baselines import baselines, compute_metrics_baseline
+from domias.bnaf.density_estimation import compute_log_p_x, density_estimator_trainer
+from domias.metrics.combined import compute_metrics
+
+PATH_CELEB_REPRESENTATION = "celebA_representation"
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
     "--gan_method",
     type=str,
-    default="adsgan-tf",
+    default="adsgan",
     choices=[
-        "adsgan-tf",
         "TVAE",
-        "CTGAN",
         "KDE",
         "gaussian_copula",
         "adsgan",
@@ -70,7 +85,7 @@ parser.add_argument(
     "--dataset",
     type=str,
     default="CelebA",
-    choices=["MAGGIC", "housing", "synthetic", "CelebA"],
+    choices=["housing", "synthetic", "CelebA"],
 )
 parser.add_argument("--learning_rate", type=float, default=1e-2)
 parser.add_argument("--batch_dim", type=int, default=100)
@@ -112,82 +127,15 @@ if args.gpu_idx is not None:
     torch.cuda.set_device(args.gpu_idx)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-if args.gan_method not in ["TVAE", "KDE", "CTGAN"]:
-    from synthcity.plugins import Plugins
-from bnaf.bnaf_den_est import *
-from baselines_stable import *
-from bnaf.datasets import *
-import numpy as np
-import pandas as pd
-from ctgan import CTGANSynthesizer
-from ctgan import load_demo
-import ctgan
-from sdv.tabular import TVAE
-from sdv.evaluation import evaluate
-from scipy import stats
-from sklearn import metrics
-from sklearn.metrics import accuracy_score
-from metrics.combined import compute_metrics
-import os
-
 os.makedirs("results_folder", exist_ok=True)
 
 
-#%% Import necessary functions
-# from data_loader import load_adult_data
-from adsgan import adsgan
-from metrics.feature_distribution import feature_distribution
-from metrics.compute_wd import compute_wd
-from metrics.compute_identifiability import compute_identifiability
-import numpy as np
-
-#%% Experiment main function
-def exp_main(args, orig_data_frame):
-
-    orig_data = orig_data_frame
-    # Generate synthetic data
-    params = dict()
-    params["lamda"] = args.lamda
-    params["iterations"] = args.iterations
-    params["h_dim"] = args.h_dim
-    params["z_dim"] = args.z_dim
-    params["mb_size"] = args.mb_size
-
-    synth_data_list = adsgan(orig_data, params)
-    synth_data = synth_data_list[0]
-    print("Finish synthetic data generation")
-
-    ## Performance measures
-    # (1) Feature distributions
-    feat_dist = feature_distribution(orig_data, synth_data)
-    print("Finish computing feature distributions")
-
-    # (2) Wasserstein Distance (WD)
-    print("Start computing Wasserstein Distance")
-    wd_measure = compute_wd(orig_data, synth_data, params)
-    print("WD measure: " + str(wd_measure))
-
-    # (3) Identifiability
-    identifiability = compute_identifiability(orig_data, synth_data)
-    print("Identifiability measure: " + str(identifiability))
-
-    return orig_data, synth_data_list, [feat_dist, wd_measure, identifiability]
-
-
-performance_logger = {}
+performance_logger: Dict = {}
 
 """ 1. load dataset"""
-if args.dataset == "MAGGIC":
-    dataset = MAGGIC("")
-    dataset = np.vstack((dataset.train.x, dataset.val.x, dataset.test.x))
-    np.random.shuffle(dataset)
-    print("dataset size,", dataset.shape)
-    ndata = dataset.shape[0]
-elif args.dataset == "housing":
-    from sklearn.datasets import fetch_california_housing
-    from sklearn.preprocessing import StandardScaler
+if args.dataset == "housing":
 
-    def data_loader():
+    def data_loader() -> np.ndarray:
         # np.random.multivariate_normal([0],[[1]], n1)*std1 # non-training data
         scaler = StandardScaler()
         X = fetch_california_housing().data
@@ -265,13 +213,11 @@ for SIZE_PARAM in args.training_size_list:
                         samples.values,
                         samples_val.values[: int(0.5 * N_DATA_GEN)],
                         samples_val.values[int(0.5 * N_DATA_GEN) :],
-                        args=args,
                     )
                     _data, model_data = density_estimator_trainer(
                         addition_set,
                         addition_set2[: int(0.5 * ADDITION_SIZE)],
                         addition_set2[: int(0.5 * ADDITION_SIZE)],
-                        args=args,
                     )
                     p_G_train = (
                         compute_log_p_x(

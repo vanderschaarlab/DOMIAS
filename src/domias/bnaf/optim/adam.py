@@ -1,17 +1,21 @@
+# stdlib
 import math
+from typing import Any, Callable, Optional, Tuple
+
+# third party
 import torch
 
 
 class Adam(torch.optim.Optimizer):
     def __init__(
         self,
-        params,
-        lr=1e-3,
-        betas=(0.9, 0.999),
-        eps=1e-8,
-        weight_decay=0,
-        amsgrad=False,
-        polyak=0.0,
+        params: Any,
+        lr: float = 1e-3,
+        betas: Tuple[float, float] = (0.9, 0.999),
+        eps: float = 1e-8,
+        weight_decay: float = 0,
+        amsgrad: bool = False,
+        polyak: float = 0.0,
     ):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
@@ -34,12 +38,12 @@ class Adam(torch.optim.Optimizer):
         )
         super(Adam, self).__init__(params, defaults)
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Any) -> None:
         super(Adam, self).__setstate__(state)
         for group in self.param_groups:
             group.setdefault("amsgrad", False)
 
-    def step(self, closure=None):
+    def step(self, closure: Optional[Callable] = None) -> Optional[float]:
         """Performs a single optimization step.
         Arguments:
             closure (callable, optional): A closure that reevaluates the model
@@ -109,7 +113,7 @@ class Adam(torch.optim.Optimizer):
 
         return loss
 
-    def swap(self):
+    def swap(self) -> None:
         """
         Swapping the running average of params and the current params for saving parameters using polyak averaging
         """
@@ -120,7 +124,7 @@ class Adam(torch.optim.Optimizer):
                 p.data = state["exp_avg_param"]
                 state["exp_avg_param"] = new
 
-    def substitute(self):
+    def substitute(self) -> None:
         for group in self.param_groups:
             for p in group["params"]:
                 p.data = self.state[p]["exp_avg_param"]

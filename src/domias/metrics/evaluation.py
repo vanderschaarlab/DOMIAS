@@ -1,12 +1,14 @@
-import numpy as np
+# stdlib
 import sys
+from typing import Tuple
+
+# third party
+import numpy as np
+import torch
 from sklearn.neighbors import NearestNeighbors
 
-import logging
-import torch
-import scipy
-
 if not sys.warnoptions:
+    # stdlib
     import warnings
 
     warnings.simplefilter("ignore")
@@ -15,8 +17,11 @@ device = "cpu"  # matrices are too big for gpu
 
 
 def compute_alpha_precision(
-    real_data, synthetic_data, emb_center, alternative_coverage=False
-):
+    real_data: torch.Tensor,
+    synthetic_data: torch.Tensor,
+    emb_center: torch.Tensor,
+    alternative_coverage: bool = False,
+) -> Tuple:
 
     emb_center = torch.tensor(emb_center, device=device)
 

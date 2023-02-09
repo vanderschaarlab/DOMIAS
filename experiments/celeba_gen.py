@@ -1,5 +1,22 @@
+# stdlib
 import argparse
+import os
+from typing import Any, Generator, Optional, Tuple
+
+# third party
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# import torch.nn.functional as F
+import torch.nn.init as init
+import torchvision.transforms as tf
+from torch.autograd import Variable
+from torch.utils.data import DataLoader
+from torchvision.datasets import ImageFolder
+from tqdm.notebook import tqdm
 
 parser = argparse.ArgumentParser()
 
@@ -21,25 +38,6 @@ AE_EPOCH = args.ae_epoch
 alias = f"{SEED}_{GPU_IDX}_{LATENT_REPRESENTATION_DIM}_tsz{args.training_size}"
 
 
-import os
-import torch
-import torch.nn as nn
-import torchvision.transforms as tf
-from torchvision.datasets import ImageFolder
-from torch.utils.data import DataLoader
-from tqdm.notebook import tqdm
-import matplotlib.pyplot as plt
-import pandas as pd
-import torch.nn.functional as F
-from torchvision.utils import make_grid
-from torchvision.utils import save_image
-from PIL import Image
-
-# %matplotlib inline
-# dirc='../subset_1000'
-
-import os
-
 os.system(f"mkdir ../debug_train_{args.training_size}")
 os.system(f"mkdir ../debug_train_{args.training_size}/debug_train_{args.training_size}")
 for i in range(int(args.training_size / 1000)):
@@ -48,12 +46,12 @@ for i in range(int(args.training_size / 1000)):
     )
 
 
-os.system(f"mkdir ../debug_ref")
-os.system(f"mkdir ../debug_ref/debug_ref")
+os.system("mkdir ../debug_ref")
+os.system("mkdir ../debug_ref/debug_ref")
 for i in range(5):
-    os.system(f"cp -r ../subset_5k15k/subset_5k15k/00{5+i}* ../debug_ref/debug_ref/")
+    os.system("cp -r ../subset_5k15k/subset_5k15k/00{5+i}* ../debug_ref/debug_ref/")
 for i in range(5):
-    os.system(f"cp -r ../subset_5k15k/subset_5k15k/01{i}* ../debug_ref/debug_ref/")
+    os.system("cp -r ../subset_5k15k/subset_5k15k/01{i}* ../debug_ref/debug_ref/")
 
 
 os.system(f"mkdir ../debug_test_{args.training_size}")
@@ -93,58 +91,51 @@ dataloader = DataLoader(
 )
 
 
-def denormalized(img):
+def denormalized(img: np.ndarray) -> np.ndarray:
     return img * ms[1][0] + ms[0][0]
 
 
-def deviceLoaderfunc(data, device):
+def deviceLoaderfunc(data: Any, device: Any) -> torch.Tensor:
     if isinstance(data, (list, tuple)):
         return [deviceLoaderfunc(x, device) for x in data]
     return data.to(device, non_blocking=True)
 
 
 class DeviceDataLoader:
-    def __init__(self, dl, device):
+    def __init__(self, dl: Any, device: Any) -> None:
         self.dl = dl
         self.device = device
 
-    def __iter__(self):
+    def __iter__(self) -> Generator:
         for b in self.dl:
             yield deviceLoaderfunc(b, self.device)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.dl)
 
 
 dataloader = DeviceDataLoader(dataloader, device)
 
-import torch
-import torch.nn as nn
 
-# import torch.nn.functional as F
-import torch.nn.init as init
-from torch.autograd import Variable
-
-
-def reparametrize(mu, logvar):
+def reparametrize(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
     std = logvar.div(2).exp()
     eps = Variable(std.data.new(std.size()).normal_())
     return mu + std * eps
 
 
 class View(nn.Module):
-    def __init__(self, size):
+    def __init__(self, size: Tuple) -> None:
         super(View, self).__init__()
         self.size = size
 
-    def forward(self, tensor):
+    def forward(self, tensor: torch.Tensor) -> torch.Tensor:
         return tensor.view(self.size)
 
 
 class BetaVAE_H(nn.Module):
     """Model proposed in original beta-VAE paper(Higgins et al, ICLR, 2017)."""
 
-    def __init__(self, z_dim=10, nc=3):
+    def __init__(self, z_dim: int = 10, nc: int = 3) -> None:
         super(BetaVAE_H, self).__init__()
         self.z_dim = z_dim
         self.nc = nc
@@ -179,12 +170,12 @@ class BetaVAE_H(nn.Module):
 
         self.weight_init()
 
-    def weight_init(self):
+    def weight_init(self) -> None:
         for block in self._modules:
             for m in self._modules[block]:
                 kaiming_init(m)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         distributions = self._encode(x)
         mu = distributions[:, : self.z_dim]
         logvar = distributions[:, self.z_dim :]
@@ -193,17 +184,17 @@ class BetaVAE_H(nn.Module):
 
         return x_recon, mu, logvar
 
-    def _encode(self, x):
+    def _encode(self, x: torch.Tensor) -> torch.Tensor:
         return self.encoder(x)
 
-    def _decode(self, z):
+    def _decode(self, z: torch.Tensor) -> torch.Tensor:
         return self.decoder(z)
 
 
 class BetaVAE_B(BetaVAE_H):
     """Model proposed in understanding beta-VAE paper(Burgess et al, arxiv:1804.03599, 2018)."""
 
-    def __init__(self, z_dim=10, nc=1):
+    def __init__(self, z_dim: int = 10, nc: int = 1) -> None:
         super(BetaVAE_B, self).__init__()
         self.nc = nc
         self.z_dim = z_dim
@@ -244,12 +235,12 @@ class BetaVAE_B(BetaVAE_H):
         )
         self.weight_init()
 
-    def weight_init(self):
+    def weight_init(self) -> None:
         for block in self._modules:
             for m in self._modules[block]:
                 kaiming_init(m)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         distributions = self._encode(x)
         mu = distributions[:, : self.z_dim]
         logvar = distributions[:, self.z_dim :]
@@ -258,14 +249,14 @@ class BetaVAE_B(BetaVAE_H):
 
         return x_recon, mu, logvar
 
-    def _encode(self, x):
+    def _encode(self, x: torch.Tensor) -> torch.Tensor:
         return self.encoder(x)
 
-    def _decode(self, z):
+    def _decode(self, z: torch.Tensor) -> torch.Tensor:
         return self.decoder(z)
 
 
-def kaiming_init(m):
+def kaiming_init(m: Any) -> None:
     if isinstance(m, (nn.Linear, nn.Conv2d)):
         init.kaiming_normal(m.weight)
         if m.bias is not None:
@@ -276,7 +267,7 @@ def kaiming_init(m):
             m.bias.data.fill_(0)
 
 
-def normal_init(m, mean, std):
+def normal_init(m: Any, mean: torch.Tensor, std: torch.Tensor) -> None:
     if isinstance(m, (nn.Linear, nn.Conv2d)):
         m.weight.data.normal_(mean, std)
         if m.bias.data is not None:
@@ -287,7 +278,9 @@ def normal_init(m, mean, std):
             m.bias.data.zero_()
 
 
-def reconstruction_loss(x, x_recon, distribution):
+def reconstruction_loss(
+    x: torch.Tensor, x_recon: torch.Tensor, distribution: torch.Tensor
+) -> Optional[torch.Tensor]:
     batch_size = x.size(0)
     assert batch_size != 0
 
@@ -304,7 +297,9 @@ def reconstruction_loss(x, x_recon, distribution):
     return recon_loss
 
 
-def kl_divergence(mu, logvar):
+def kl_divergence(
+    mu: torch.Tensor, logvar: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     batch_size = mu.size(0)
     assert batch_size != 0
     if mu.data.ndimension() == 4:
@@ -337,8 +332,15 @@ for epoch in range(epochs):
     for r_images, _ in tqdm(dataloader):
         x_recon, mu, logvar = beta_vae(r_images)
         recon_loss = reconstruction_loss(r_images, x_recon, "gaussian")
+
         total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
         beta_vae_loss = recon_loss + 1.0 * total_kld
+    if recon_loss is None:
+        raise RuntimeError("invalid recon_loss")
+
+    if beta_vae_loss is None:
+        raise RuntimeError("invalid recon_loss")
+
     beta_vae_optimizer.zero_grad()
     beta_vae_loss.backward()
     beta_vae_optimizer.step()
@@ -407,7 +409,7 @@ decoder = nn.Sequential(
 ).to(device)
 
 
-def fit_AE(epochs, lr, index=1):
+def fit_AE(epochs: int, lr: float, index: int = 1) -> None:
 
     torch.cuda.empty_cache()
     enc_dec_optimizer = torch.optim.Adam(
@@ -434,8 +436,6 @@ def fit_AE(epochs, lr, index=1):
 fit_AE(2, 0.0002)
 
 HIDDEN = LATENT_REPRESENTATION_DIM
-import numpy as np
-
 N_SYNTH = 10000
 synth_representation = np.zeros((N_SYNTH, HIDDEN))
 if N_SYNTH > 50:
@@ -453,9 +453,6 @@ np.save(
     f"celebA_representation/AISTATS_betavae_repres_synth_{alias}", synth_representation
 )
 
-
-import numpy as np
-
 N_REAL = 999
 real_representation = np.zeros((N_REAL, HIDDEN))
 i = 0
@@ -471,7 +468,7 @@ np.save(
 
 
 ref_dataset = ImageFolder(
-    f"../debug_ref",
+    "../debug_ref",
     transform=tf.Compose(
         [
             tf.Resize(image_size),
@@ -487,8 +484,6 @@ ref_dataloader = DataLoader(
 )
 ref_dataloader = DeviceDataLoader(ref_dataloader, device)
 
-
-import numpy as np
 
 N_REF = 10000
 
@@ -519,8 +514,6 @@ test_dataloader = DataLoader(
     test_dataset, batch_size=batch_size, shuffle=True, num_workers=workers
 )
 test_dataloader = DeviceDataLoader(test_dataloader, device)
-
-import numpy as np
 
 N_TEST = 1000
 

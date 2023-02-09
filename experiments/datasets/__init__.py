@@ -1,1 +1,0 @@
-from .healthcare import HEALTHCARE

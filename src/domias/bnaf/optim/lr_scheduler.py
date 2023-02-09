@@ -1,16 +1,32 @@
+# stdlib
+from typing import Any, Callable, Optional
+
+# third party
 import torch
 
 
 class ReduceLROnPlateau(torch.optim.lr_scheduler.ReduceLROnPlateau):
-    def __init__(self, *args, early_stopping=None, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self, *args: Any, early_stopping: Optional[int] = None, **kwargs: Any
+    ) -> None:
         self.early_stopping = early_stopping
         self.early_stopping_counter = 0
+        self.last_epoch = 0
+        self.cooldown_counter = self.cooldown = self.wait = 0
+        self.best: Any
 
-    def step(self, metrics, epoch=None, callback_best=None, callback_reduce=None):
+        super().__init__(*args, **kwargs)
+
+    def step(
+        self,
+        metrics: Any,
+        epoch: Optional[int] = None,
+        callback_best: Optional[Callable] = None,
+        callback_reduce: Optional[Callable] = None,
+    ) -> bool:
         current = metrics
         if epoch is None:
-            epoch = self.last_epoch = self.last_epoch + 1
+            epoch = self.last_epoch + 1
         self.last_epoch = epoch
 
         if self.is_better(current, self.best):

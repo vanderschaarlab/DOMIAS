@@ -1,6 +1,10 @@
-import torch
+# stdlib
 import math
+from typing import Any, Optional, Tuple, Union
+
+# third party
 import numpy as np
+import torch
 
 
 class Sequential(torch.nn.Sequential):
@@ -9,7 +13,7 @@ class Sequential(torch.nn.Sequential):
     the function alongside with the log-det-Jacobian of such transformation.
     """
 
-    def forward(self, inputs: torch.Tensor):
+    def forward(self, inputs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Parameters
         ----------
@@ -33,7 +37,7 @@ class BNAF(torch.nn.Sequential):
     Normalizing Flow.
     """
 
-    def __init__(self, *args, res: str = None):
+    def __init__(self, *args: Any, res: Optional[str] = None) -> None:
         """
         Parameters
         ----------
@@ -52,7 +56,7 @@ class BNAF(torch.nn.Sequential):
         if res == "gated":
             self.gate = torch.nn.Parameter(torch.nn.init.normal_(torch.Tensor(1)))
 
-    def forward(self, inputs: torch.Tensor):
+    def forward(self, inputs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Parameters
         ----------
@@ -72,6 +76,8 @@ class BNAF(torch.nn.Sequential):
             grad = grad if len(grad.shape) == 4 else grad.view(grad.shape + [1, 1])
 
         assert inputs.shape[-1] == outputs.shape[-1]
+        if grad is None:
+            raise RuntimeError("Invalid grad")
 
         if self.res == "normal":
             return inputs + outputs, torch.nn.functional.softplus(grad.squeeze()).sum(
@@ -85,7 +91,7 @@ class BNAF(torch.nn.Sequential):
         else:
             return outputs, grad.squeeze().sum(-1)
 
-    def _get_name(self):
+    def _get_name(self) -> str:
         return "BNAF(res={})".format(self.res)
 
 
@@ -94,7 +100,7 @@ class Permutation(torch.nn.Module):
     Module that outputs a permutation of its input.
     """
 
-    def __init__(self, in_features: int, p: list = None):
+    def __init__(self, in_features: int, p: Optional[Union[list, str]] = None) -> None:
         """
         Parameters
         ----------
@@ -117,7 +123,7 @@ class Permutation(torch.nn.Module):
         else:
             self.p = p
 
-    def forward(self, inputs: torch.Tensor):
+    def forward(self, inputs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Parameters
         ----------
@@ -130,7 +136,7 @@ class Permutation(torch.nn.Module):
 
         return inputs[:, self.p], 0
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Permutation(in_features={}, p={})".format(self.in_features, self.p)
 
 
@@ -142,7 +148,7 @@ class MaskedWeight(torch.nn.Module):
 
     def __init__(
         self, in_features: int, out_features: int, dim: int, bias: bool = True
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -203,7 +209,7 @@ class MaskedWeight(torch.nn.Module):
 
         self.register_buffer("mask_o", mask_o)
 
-    def get_weights(self):
+    def get_weights(self) -> Any:
         """
         Computes the weight matrix using masks and weight normalization.
         It also compute the log diagonal blocks of it.
@@ -221,7 +227,9 @@ class MaskedWeight(torch.nn.Module):
             self.dim, self.in_features // self.dim, self.out_features // self.dim
         )
 
-    def forward(self, inputs, grad: torch.Tensor = None):
+    def forward(
+        self, inputs: torch.Tensor, grad: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         Parameters
         ----------
@@ -246,7 +254,7 @@ class MaskedWeight(torch.nn.Module):
             else g,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "MaskedWeight(in_features={}, out_features={}, dim={}, bias={})".format(
             self.in_features,
             self.out_features,
@@ -261,7 +269,9 @@ class Tanh(torch.nn.Tanh):
     blocks of the Jacobian.
     """
 
-    def forward(self, inputs, grad: torch.Tensor = None):
+    def forward(
+        self, inputs: torch.Tensor, grad: Optional[torch.Tensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Parameters
         ----------

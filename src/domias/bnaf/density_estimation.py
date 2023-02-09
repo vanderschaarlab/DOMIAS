@@ -1,20 +1,22 @@
-import os
-import json
+# stdlib
 import argparse
-import pprint
 import datetime
-import torch
-from torch.utils import data
-from bnaf import *
-from tqdm import tqdm
-from optim.adam import Adam
-from optim.lr_scheduler import ReduceLROnPlateau
+import json
+import os
+import pprint
+from typing import Any, Callable, Optional, Tuple
 
-from data.gas import GAS
-from data.bsds300 import BSDS300
-from data.hepmass import HEPMASS
-from data.miniboone import MINIBOONE
-from data.power import POWER
+# third party
+import numpy as np
+import torch
+from tensorboardX import SummaryWriter
+from torch import nn
+from tqdm import tqdm
+
+# domias absolute
+from domias.bnaf.bnaf import BNAF, MaskedWeight, Permutation, Sequential, Tanh
+from domias.bnaf.optim.adam import Adam
+from domias.bnaf.optim.lr_scheduler import ReduceLROnPlateau
 
 NAF_PARAMS = {
     "power": (414213, 828258),
@@ -27,7 +29,16 @@ NAF_PARAMS = {
 assert torch.cuda.is_available()
 
 
-def load_dataset(args, data_train=None, data_valid=None, data_test=None):
+def load_dataset(
+    args: Any,
+    data_train: Optional[np.ndarray] = None,
+    data_valid: Optional[np.ndarray] = None,
+    data_test: Optional[np.ndarray] = None,
+) -> Tuple[
+    torch.utils.data.DataLoader,
+    torch.utils.data.DataLoader,
+    torch.utils.data.DataLoader,
+]:
     if data_train is not None:
         dataset_train = torch.utils.data.TensorDataset(
             torch.from_numpy(data_train).float().to(args.device)
@@ -49,32 +60,7 @@ def load_dataset(args, data_train=None, data_valid=None, data_test=None):
 
         args.n_dims = data_train.shape[1]
     else:
-        if args.dataset == "gas":
-            dataset = GAS("data/gas/ethylene_CO.pickle")
-        elif args.dataset == "bsds300":
-            dataset = BSDS300("data/BSDS300/BSDS300.hdf5")
-        elif args.dataset == "hepmass":
-            dataset = HEPMASS("data/hepmass")
-        elif args.dataset == "miniboone":
-            dataset = MINIBOONE("data/miniboone/data.npy")
-        elif args.dataset == "power":
-            dataset = POWER("data/power/data.npy")
-        else:
-            raise RuntimeError()
-
-        dataset_train = torch.utils.data.TensorDataset(
-            torch.from_numpy(dataset.trn.x).float().to(args.device)
-        )
-
-        dataset_valid = torch.utils.data.TensorDataset(
-            torch.from_numpy(dataset.val.x).float().to(args.device)
-        )
-
-        dataset_test = torch.utils.data.TensorDataset(
-            torch.from_numpy(dataset.tst.x).float().to(args.device)
-        )
-
-        args.n_dims = dataset.n_dims
+        raise RuntimeError()
 
     data_loader_train = torch.utils.data.DataLoader(
         dataset_train, batch_size=args.batch_dim, shuffle=True
@@ -91,7 +77,7 @@ def load_dataset(args, data_train=None, data_valid=None, data_test=None):
     return data_loader_train, data_loader_valid, data_loader_test
 
 
-def create_model(args, verbose=False):
+def create_model(args: Any, verbose: bool = False) -> nn.Module:
 
     flows = []
     for f in range(args.flows):
@@ -147,7 +133,7 @@ def create_model(args, verbose=False):
         )
 
     if args.save and not args.load:
-        with open(os.path.join(args.load or args.path, "results.txt"), "a") as f:
+        with open(os.path.join(args.load or args.path, "results.txt"), "a") as out:
             print(
                 "Parameters={}, NAF/BNAF={:.2f}/{:.2f}, n_dims={}".format(
                     params,
@@ -155,14 +141,14 @@ def create_model(args, verbose=False):
                     NAF_PARAMS[args.dataset][1] / params,
                     args.n_dims,
                 ),
-                file=f,
+                file=out,
             )
 
     return model
 
 
-def save_model(model, optimizer, epoch, args):
-    def f():
+def save_model(model: nn.Module, optimizer: Any, epoch: int, args: Any) -> Callable:
+    def f() -> None:
         if args.save:
             print("Saving model..")
             torch.save(
@@ -177,8 +163,10 @@ def save_model(model, optimizer, epoch, args):
     return f
 
 
-def load_model(model, optimizer, args, load_start_epoch=False):
-    def f():
+def load_model(
+    model: nn.Module, optimizer: Any, args: Any, load_start_epoch: bool = False
+) -> Callable:
+    def f() -> None:
         print("Loading model..")
         checkpoint = torch.load(os.path.join(args.load or args.path, "checkpoint.pt"))
         model.load_state_dict(checkpoint["model"])
@@ -190,7 +178,7 @@ def load_model(model, optimizer, args, load_start_epoch=False):
     return f
 
 
-def compute_log_p_x(model, x_mb):
+def compute_log_p_x(model: nn.Moduke, x_mb: torch.Tensor) -> torch.Tensor:
     y_mb, log_diag_j_mb = model(x_mb)
     log_p_y_mb = (
         torch.distributions.Normal(torch.zeros_like(y_mb), torch.ones_like(y_mb))
@@ -201,17 +189,16 @@ def compute_log_p_x(model, x_mb):
 
 
 def train(
-    model,
-    optimizer,
-    scheduler,
-    data_loader_train,
-    data_loader_valid,
-    data_loader_test,
-    args,
-):
+    model: nn.Module,
+    optimizer: Any,
+    scheduler: Any,
+    data_loader_train: torch.utils.data.DataLoader,
+    data_loader_valid: torch.utils.data.DataLoader,
+    data_loader_test: torch.utils.data.DataLoader,
+    args: Any,
+) -> Callable:
 
     if args.tensorboard:
-        from tensorboardX import SummaryWriter
 
         writer = SummaryWriter(os.path.join(args.tensorboard, args.load or args.path))
 
@@ -219,7 +206,7 @@ def train(
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
 
         t = tqdm(data_loader_train, smoothing=0, ncols=80)
-        train_loss = []
+        train_loss: torch.Tensor = []
 
         for (x_mb,) in t:
             loss = -compute_log_p_x(model, x_mb).mean()
@@ -287,110 +274,17 @@ def train(
             print("Validation loss: {:4.3f}".format(validation_loss.item()), file=f)
             print("Test loss:       {:4.3f}".format(test_loss.item()), file=f)
 
-    def p_func(x):
+    def p_func(x: np.ndarray) -> np.ndarray:
         return np.exp(compute_log_p_x(model, x))
 
     return p_func
 
 
-def main_original():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--device", type=str, default="cuda:0")
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        default="miniboone",
-        choices=["gas", "bsds300", "hepmass", "miniboone", "power"],
-    )
-
-    parser.add_argument("--learning_rate", type=float, default=1e-2)
-    parser.add_argument("--batch_dim", type=int, default=200)
-    parser.add_argument("--clip_norm", type=float, default=0.1)
-    parser.add_argument("--epochs", type=int, default=100)
-
-    parser.add_argument("--patience", type=int, default=20)
-    parser.add_argument("--cooldown", type=int, default=10)
-    parser.add_argument("--early_stopping", type=int, default=100)
-    parser.add_argument("--decay", type=float, default=0.5)
-    parser.add_argument("--min_lr", type=float, default=5e-4)
-    parser.add_argument("--polyak", type=float, default=0.998)
-
-    parser.add_argument("--flows", type=int, default=5)
-    parser.add_argument("--layers", type=int, default=1)
-    parser.add_argument("--hidden_dim", type=int, default=10)
-    parser.add_argument(
-        "--residual", type=str, default="gated", choices=[None, "normal", "gated"]
-    )
-
-    parser.add_argument("--expname", type=str, default="")
-    parser.add_argument("--load", type=str, default=None)
-    parser.add_argument("--save", action="store_true")
-    parser.add_argument("--tensorboard", type=str, default="tensorboard")
-
-    args = parser.parse_args()
-
-    print("Arguments:")
-    pprint.pprint(args.__dict__)
-
-    args.path = os.path.join(
-        "checkpoint",
-        "{}{}_layers{}_h{}_flows{}{}_{}".format(
-            args.expname + ("_" if args.expname != "" else ""),
-            args.dataset,
-            args.layers,
-            args.hidden_dim,
-            args.flows,
-            "_" + args.residual if args.residual else "",
-            str(datetime.datetime.now())[:-7].replace(" ", "-").replace(":", "-"),
-        ),
-    )
-
-    print("Loading dataset..")
-    data_loader_train, data_loader_valid, data_loader_test = load_dataset(args)
-
-    if args.save and not args.load:
-        print("Creating directory experiment..")
-        os.mkdir(args.path)
-        with open(os.path.join(args.path, "args.json"), "w") as f:
-            json.dump(args.__dict__, f, indent=4, sort_keys=True)
-
-    print("Creating BNAF model..")
-    model = create_model(args, verbose=True)
-
-    print("Creating optimizer..")
-    optimizer = Adam(
-        model.parameters(), lr=args.learning_rate, amsgrad=True, polyak=args.polyak
-    )
-
-    print("Creating scheduler..")
-    scheduler = ReduceLROnPlateau(
-        optimizer,
-        factor=args.decay,
-        patience=args.patience,
-        cooldown=args.cooldown,
-        min_lr=args.min_lr,
-        verbose=True,
-        early_stopping=args.early_stopping,
-        threshold_mode="abs",
-    )
-
-    args.start_epoch = 0
-    if args.load:
-        load_model(model, optimizer, args, load_start_epoch=True)()
-
-    print("Training..")
-    train(
-        model,
-        optimizer,
-        scheduler,
-        data_loader_train,
-        data_loader_valid,
-        data_loader_test,
-        args,
-    )
-
-
-def density_estimator_trainer(data_train, data_val=None, data_test=None):
+def density_estimator_trainer(
+    data_train: np.ndarray,
+    data_val: Optional[np.ndarray] = None,
+    data_test: Optional[np.ndarray] = None,
+) -> Tuple[Callable, nn.Module]:
     parser = argparse.ArgumentParser()
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument(
@@ -487,8 +381,4 @@ def density_estimator_trainer(data_train, data_val=None, data_test=None):
         data_loader_test,
         args,
     )
-    return p_func
-
-
-if __name__ == "__main__":
-    main_original()
+    return p_func, model

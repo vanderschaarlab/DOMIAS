@@ -1,1 +1,2 @@
-from .adam import Adam
+# domias relative
+from .adam import Adam  # noqa: F401
