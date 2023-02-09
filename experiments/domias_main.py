@@ -4,13 +4,14 @@ from __future__ import absolute_import, division, print_function
 # stdlib
 import argparse
 import os
+from pathlib import Path
 from typing import Dict, Optional, Union
 
 # third party
 import numpy as np
 import pandas as pd
 import torch
-from ctgan import CTGANSynthesizer
+from ctgan import CTGAN
 from scipy import stats
 from scipy.stats import multivariate_normal
 from sdv.tabular import TVAE
@@ -22,9 +23,11 @@ from synthcity.plugins import Plugins
 # domias absolute
 from domias.baselines import baselines, compute_metrics_baseline
 from domias.bnaf.density_estimation import compute_log_p_x, density_estimator_trainer
-from domias.metrics.combined import compute_metrics
+from domias.metrics.wd import compute_wd
 
-# from scipy.stats import norm
+workspace = Path("synth_folder")
+workspace.mkdir(parents=True, exist_ok=True)
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
@@ -84,7 +87,7 @@ parser.add_argument(
     help="size of generated dataset",
 )
 parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--gpu_idx", default=3, type=int)
+parser.add_argument("--gpu_idx", default=None, type=int)
 parser.add_argument("--device", type=str, default=None)
 parser.add_argument(
     "--dataset",
@@ -294,7 +297,7 @@ def evaluate(
         syn_model = TVAE(epochs=TRAINING_EPOCH)
         syn_model.fit(df)
     elif gan_method == "CTGAN":
-        syn_model = CTGANSynthesizer(epochs=TRAINING_EPOCH)
+        syn_model = CTGAN(epochs=TRAINING_EPOCH)
         syn_model.fit(df)
     elif gan_method == "KDE":
         kde_model = stats.gaussian_kde(training_set.transpose(1, 0))
@@ -320,10 +323,7 @@ def evaluate(
             samples_val = syn_model.generate(count=N_DATA_GEN)
 
         wd_n = min(len(samples), len(addition_set))
-        eval_met_on_held_out = compute_metrics(
-            samples[:wd_n], addition_set[:wd_n], which_metric=["WD"]
-        )["wd_measure"]
-        # eval_ctgan = evaluate(samples, pd.DataFrame(addition_set2))
+        eval_met_on_held_out = compute_wd(samples[:wd_n], addition_set[:wd_n])
         performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
             f"{N_DATA_GEN}_evaluation"
         ] = eval_met_on_held_out
@@ -340,11 +340,11 @@ def evaluate(
             eval_met_on_held_out,
         )
 
-        np.save(f"synth_folder/{gpu_idx}_synth_samples", samples)
-        np.save(f"synth_folder/{gpu_idx}_training_set", training_set)
-        np.save(f"synth_folder/{gpu_idx}_test_set", test_set)
-        np.save(f"synth_folder/{gpu_idx}_ref_set1", addition_set)
-        np.save(f"synth_folder/{gpu_idx}_ref_set2", addition_set2)
+        np.save(workspace / f"{gpu_idx}_synth_samples", samples)
+        np.save(workspace / f"{gpu_idx}_training_set", training_set)
+        np.save(workspace / f"{gpu_idx}_test_set", test_set)
+        np.save(workspace / f"{gpu_idx}_ref_set1", addition_set)
+        np.save(workspace / f"{gpu_idx}_ref_set2", addition_set2)
 
         """ 4. density estimation / evaluation of Eqn.(1) & Eqn.(2)"""
         if density_estimator == "bnaf":
@@ -389,7 +389,7 @@ def evaluate(
             [np.ones(training_set.shape[0]), np.zeros(test_set.shape[0])]
         ).astype(bool)
         # build another GAN for hayes and GAN_leak_cal
-        ctgan = CTGANSynthesizer(epochs=200)
+        ctgan = CTGAN(epochs=200)
         samples.columns = [str(_) for _ in range(dataset.shape[1])]
         ctgan.fit(samples)  # train a CTGAN on the generated examples
 

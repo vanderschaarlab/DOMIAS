@@ -26,7 +26,7 @@ def d_min(X: np.ndarray, Y: np.ndarray) -> np.ndarray:
     return np.min(d(X, Y))
 
 
-def GAN_leaks(X_test: np.ndaray, X_G: np.ndarray) -> np.ndarray:
+def GAN_leaks(X_test: np.ndarray, X_G: np.ndarray) -> np.ndarray:
     scores = np.zeros(X_test.shape[0])
     for i, x in enumerate(X_test):
         scores[i] = np.exp(-d_min(x, X_G))
@@ -150,7 +150,7 @@ def baselines(
     X_ref: np.ndarray,
     X_ref_GLC: np.ndarray,
     sample_weight: Optional[np.ndarray] = None,
-) -> Tuple[pd.Dataframe, dict]:
+) -> Tuple[pd.DataFrame, dict]:
     score = {}
     score["Eq. 1"], score["Eq. 2"] = kde_baseline(X_test, X_G, X_ref)
     score["hayes_torch"] = hayes_torch(X_test, X_G, X_ref)

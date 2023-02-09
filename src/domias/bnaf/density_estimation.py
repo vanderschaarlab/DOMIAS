@@ -26,8 +26,6 @@ NAF_PARAMS = {
     "bsds300": (36759591, 73510236),
 }
 
-assert torch.cuda.is_available()
-
 
 def load_dataset(
     args: Any,
@@ -178,7 +176,7 @@ def load_model(
     return f
 
 
-def compute_log_p_x(model: nn.Moduke, x_mb: torch.Tensor) -> torch.Tensor:
+def compute_log_p_x(model: nn.Module, x_mb: torch.Tensor) -> torch.Tensor:
     y_mb, log_diag_j_mb = model(x_mb)
     log_p_y_mb = (
         torch.distributions.Normal(torch.zeros_like(y_mb), torch.ones_like(y_mb))
