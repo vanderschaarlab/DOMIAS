@@ -1,10 +1,8 @@
 import os
 import json
-import argparse
 import pprint
 import datetime
 import torch
-from torch.utils import data
 from bnaf import *
 from bnaf import BNAF
 from tqdm import tqdm
@@ -20,9 +18,9 @@ NAF_PARAMS = {
     "hepmass": (9272743, 18544268),
     "miniboone": (7487321, 14970256),
     "bsds300": (36759591, 73510236),
-    "MAGGIC":(400000, 800000),
-    "housing":(400000, 800000),
-    "synthetic":(400000,800000)
+    "MAGGIC": (400000, 800000),
+    "housing": (400000, 800000),
+    "synthetic": (400000, 800000),
 }
 
 assert torch.cuda.is_available()
@@ -34,46 +32,45 @@ def load_dataset(args, data_train=None, data_valid=None, data_test=None):
             torch.from_numpy(data_train).float().to(args.device)
         )
         if data_valid is None:
-            print('No validation set passed')
+            print("No validation set passed")
             data_valid = np.random.randn(*data_train.shape)
         if data_test is None:
-            print('No test set passed')
+            print("No test set passed")
             data_test = np.random.randn(*data_train.shape)
-        
+
         dataset_valid = torch.utils.data.TensorDataset(
             torch.from_numpy(data_valid).float().to(args.device)
         )
-    
+
         dataset_test = torch.utils.data.TensorDataset(
             torch.from_numpy(data_test).float().to(args.device)
         )
-        
+
         args.n_dims = data_train.shape[1]
     else:
         if args.dataset == "MAGGIC":
-            dataset = getattr(datasets, args.dataset)('')#(args.data_dir)
+            dataset = getattr(datasets, args.dataset)("")  # (args.data_dir)
         else:
             raise RuntimeError()
 
         dataset_train = torch.utils.data.TensorDataset(
             torch.from_numpy(dataset.train.x).float().to(args.device)
         )
-        
-    
+
         dataset_valid = torch.utils.data.TensorDataset(
             torch.from_numpy(dataset.val.x).float().to(args.device)
         )
-        
+
         dataset_test = torch.utils.data.TensorDataset(
             torch.from_numpy(dataset.test.x).float().to(args.device)
         )
-        
+
         args.n_dims = dataset.n_dims
 
     data_loader_train = torch.utils.data.DataLoader(
         dataset_train, batch_size=args.batch_dim, shuffle=True
     )
-    
+
     data_loader_valid = torch.utils.data.DataLoader(
         dataset_valid, batch_size=args.batch_dim, shuffle=False
     )
@@ -261,7 +258,7 @@ def train(
         if stop:
             break
 
-    #load_model(model, optimizer, args)()
+    # load_model(model, optimizer, args)()
     optimizer.swap()
     validation_loss = -torch.stack(
         [compute_log_p_x(model, x_mb).mean().detach() for x_mb, in data_loader_valid],
@@ -280,10 +277,10 @@ def train(
             print("###### Stop training after {} epochs!".format(epoch + 1), file=f)
             print("Validation loss: {:4.3f}".format(validation_loss.item()), file=f)
             print("Test loss:       {:4.3f}".format(test_loss.item()), file=f)
-    
+
     def p_func(x):
         return np.exp(compute_log_p_x(model, x))
-    
+
     return p_func
 
 
@@ -305,14 +302,16 @@ def density_estimator_trainer(data_train, data_val=None, data_test=None, args=No
     )
 
     print("Loading dataset..")
-    data_loader_train, data_loader_valid, data_loader_test = load_dataset(args, data_train, data_val, data_test)
+    data_loader_train, data_loader_valid, data_loader_test = load_dataset(
+        args, data_train, data_val, data_test
+    )
 
     if args.save and not args.load:
         print("Creating directory experiment..")
-        os.makedirs(args.path, exist_ok = True)
+        os.makedirs(args.path, exist_ok=True)
         with open(os.path.join(args.path, "args.json"), "w") as f:
             json.dump(args.__dict__, f, indent=4, sort_keys=True)
-    
+
     print("Creating BNAF model..")
     model = create_model(args, verbose=True)
 
@@ -349,9 +348,8 @@ def density_estimator_trainer(data_train, data_val=None, data_test=None, args=No
     )
     return p_func, model
 
+
 if __name__ == "__main__":
     start_time = time.time()
     p_func_maggic, model_maggic = main_original()
-    print('finished in ', np.round(time.time() - start_time, 2), 'sec.')
-
-    
+    print("finished in ", np.round(time.time() - start_time, 2), "sec.")

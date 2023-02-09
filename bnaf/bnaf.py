@@ -1,5 +1,6 @@
 import torch
 import math
+import numpy as np
 
 
 class Sequential(torch.nn.Sequential):
@@ -210,7 +211,7 @@ class MaskedWeight(torch.nn.Module):
 
         w = torch.exp(self._weight) * self.mask_d + self._weight * self.mask_o
 
-        w_squared_norm = (w ** 2).sum(-1, keepdim=True)
+        w_squared_norm = (w**2).sum(-1, keepdim=True)
 
         w = self._diag_weight.exp() * w / w_squared_norm.sqrt()
 

@@ -1,9 +1,8 @@
 import numpy as np
 
+
 class HEALTHCARE:
-
     class Data:
-
         def __init__(self, data):
 
             self.x = data.astype(np.float32)
@@ -12,7 +11,7 @@ class HEALTHCARE:
     def __init__(self, root):
 
         self.root = root
-        file = 'bnaf/datafolder/healthcare/healthcare.npy'
+        file = "bnaf/datafolder/healthcare/healthcare.npy"
         train, val, test = load_data_normalised(file)
 
         self.train = self.Data(train)
@@ -25,7 +24,7 @@ class HEALTHCARE:
 
         data_split = getattr(self, split, None)
         if data_split is None:
-            raise ValueError('Invalid data split')
+            raise ValueError("Invalid data split")
 
         util.plot_hist_marginals(data_split.x[:, vars])
         plt.show()
@@ -53,10 +52,10 @@ def load_data(root_path):
     # np.save("~/data/miniboone/data.npy", data)
 
     data = np.load(root_path)
-    N_test = int(0.33*data.shape[0])
+    N_test = int(0.33 * data.shape[0])
     data_test = data[-N_test:]
     data = data[0:-N_test]
-    N_validate = int(0.33*data.shape[0])
+    N_validate = int(0.33 * data.shape[0])
     data_validate = data[-N_validate:]
     data_train = data[0:-N_validate]
 
@@ -69,8 +68,8 @@ def load_data_normalised(root_path):
     data = np.vstack((data_train, data_validate))
     mu = data.mean(axis=0)
     s = data.std(axis=0)
-    data_train = (data_train - mu)/s
-    data_validate = (data_validate - mu)/s
-    data_test = (data_test - mu)/s
+    data_train = (data_train - mu) / s
+    data_validate = (data_validate - mu) / s
+    data_test = (data_test - mu) / s
 
     return data_train, data_validate, data_test

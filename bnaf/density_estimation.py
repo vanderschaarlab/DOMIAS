@@ -33,20 +33,20 @@ def load_dataset(args, data_train=None, data_valid=None, data_test=None):
             torch.from_numpy(data_train).float().to(args.device)
         )
         if data_valid is None:
-            print('No validation set passed')
+            print("No validation set passed")
             data_valid = np.random.randn(*data_train.shape)
         if data_test is None:
-            print('No test set passed')
+            print("No test set passed")
             data_test = np.random.randn(*data_train.shape)
-        
+
         dataset_valid = torch.utils.data.TensorDataset(
             torch.from_numpy(data_valid).float().to(args.device)
         )
-    
+
         dataset_test = torch.utils.data.TensorDataset(
             torch.from_numpy(data_test).float().to(args.device)
         )
-        
+
         args.n_dims = data_train.shape[1]
     else:
         if args.dataset == "gas":
@@ -65,22 +65,21 @@ def load_dataset(args, data_train=None, data_valid=None, data_test=None):
         dataset_train = torch.utils.data.TensorDataset(
             torch.from_numpy(dataset.trn.x).float().to(args.device)
         )
-        
-    
+
         dataset_valid = torch.utils.data.TensorDataset(
             torch.from_numpy(dataset.val.x).float().to(args.device)
         )
-        
+
         dataset_test = torch.utils.data.TensorDataset(
             torch.from_numpy(dataset.tst.x).float().to(args.device)
         )
-        
+
         args.n_dims = dataset.n_dims
 
     data_loader_train = torch.utils.data.DataLoader(
         dataset_train, batch_size=args.batch_dim, shuffle=True
     )
-    
+
     data_loader_valid = torch.utils.data.DataLoader(
         dataset_valid, batch_size=args.batch_dim, shuffle=False
     )
@@ -287,12 +286,11 @@ def train(
             print("###### Stop training after {} epochs!".format(epoch + 1), file=f)
             print("Validation loss: {:4.3f}".format(validation_loss.item()), file=f)
             print("Test loss:       {:4.3f}".format(test_loss.item()), file=f)
-    
+
     def p_func(x):
         return np.exp(compute_log_p_x(model, x))
-    
-    return p_func
 
+    return p_func
 
 
 def main_original():
@@ -445,7 +443,9 @@ def density_estimator_trainer(data_train, data_val=None, data_test=None):
     )
 
     print("Loading dataset..")
-    data_loader_train, data_loader_valid, data_loader_test = load_dataset(args, data_train, data_val, data_test)
+    data_loader_train, data_loader_valid, data_loader_test = load_dataset(
+        args, data_train, data_val, data_test
+    )
 
     if args.save and not args.load:
         print("Creating directory experiment..")
@@ -489,6 +489,6 @@ def density_estimator_trainer(data_train, data_val=None, data_test=None):
     )
     return p_func
 
+
 if __name__ == "__main__":
     main_original()
-    
