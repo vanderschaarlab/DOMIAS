@@ -11,7 +11,6 @@ from typing import Dict, Optional, Union
 import numpy as np
 import pandas as pd
 import torch
-from ctgan import CTGANSynthesizer
 from scipy import stats
 from scipy.stats import multivariate_normal
 from sdv.tabular import TVAE
@@ -24,8 +23,8 @@ from synthcity.plugins import Plugins
 from domias.baselines import baselines, compute_metrics_baseline
 from domias.bnaf.density_estimation import compute_log_p_x, density_estimator_trainer
 from domias.metrics.wd import compute_wd
-
-pd.options.mode.chained_assignment = None
+from domias.models.ctgan import CTGAN
+from domias.models.generator import GeneratorInterface
 
 workspace = Path("synth_folder")
 workspace.mkdir(parents=True, exist_ok=True)
@@ -222,7 +221,53 @@ class normal_func_feat:
         return multivariate_normal.pdf(Z[:, self.feat], self.mean, np.diag(self.var))
 
 
+def get_generator(
+    gan_method: str = "TVAE",
+    epsilon_adsgan: float = 0,
+    seed: int = 0,
+) -> GeneratorInterface:
+    class LocalGenerator(GeneratorInterface):
+        def __init__(self) -> None:
+            if gan_method == "TVAE":
+                syn_model = TVAE(epochs=TRAINING_EPOCH)
+            elif gan_method == "CTGAN":
+                syn_model = CTGAN(epochs=TRAINING_EPOCH)
+            elif gan_method == "KDE":
+                syn_model = None
+            else:  # synthcity
+                syn_model = Plugins().get(gan_method)
+                if gan_method == "adsgan":
+                    syn_model.lambda_identifiability_penalty = epsilon_adsgan
+                    syn_model.seed = seed
+                elif gan_method == "pategan":
+                    syn_model.dp_delta = 1e-5
+                    syn_model.dp_epsilon = epsilon_adsgan
+            self.method = gan_method
+            self.model = syn_model
+
+        def fit(self, data: pd.DataFrame) -> "LocalGenerator":
+            if self.method == "KDE":
+                self.model = stats.gaussian_kde(data.transpose(1, 0))
+            else:
+                self.model.fit(data)
+
+            return self
+
+        def generate(self, count: int) -> pd.DataFrame:
+            if gan_method == "KDE":
+                samples = pd.DataFrame(self.model.resample(count).transpose(1, 0))
+            elif gan_method == "TVAE":
+                samples = self.model.sample(count)
+            else:  # synthcity
+                samples = self.model.generate(count=count)
+
+            return samples
+
+    return LocalGenerator()
+
+
 def evaluate(
+    generator: GeneratorInterface,
     dataset: np.ndarray,
     SIZE_PARAM: int,
     ADDITION_SIZE: int,
@@ -230,12 +275,10 @@ def evaluate(
     shifted_column: Optional[int] = None,
     zero_quantile: float = 0.3,
     density_estimator: str = "prior",
-    gan_method: str = "TVAE",
-    reference_kept_p: float = 1.0,
-    epsilon_adsgan: float = 0,
     gen_size_list: list = [10000],
+    reference_kept_p: float = 1.0,
     seed: int = 0,
-) -> None:
+) -> Dict:
 
     norm = normal_func_feat(dataset)
 
@@ -295,34 +338,12 @@ def evaluate(
     """ 3. Synthesis with TVAE"""
     df = pd.DataFrame(training_set)
     df.columns = [str(_) for _ in range(dataset.shape[1])]
-    if gan_method == "TVAE":
-        syn_model = TVAE(epochs=TRAINING_EPOCH)
-        syn_model.fit(df)
-    elif gan_method == "CTGAN":
-        syn_model = CTGANSynthesizer(epochs=TRAINING_EPOCH)
-        syn_model.fit(df)
-    elif gan_method == "KDE":
-        kde_model = stats.gaussian_kde(training_set.transpose(1, 0))
-    else:  # synthcity
-        syn_model = Plugins().get(gan_method)
-        if gan_method == "adsgan":
-            syn_model.lambda_identifiability_penalty = epsilon_adsgan
-            syn_model.seed = seed
-        elif gan_method == "pategan":
-            syn_model.dp_delta = 1e-5
-            syn_model.dp_epsilon = epsilon_adsgan
-        syn_model.fit(df)
+
+    generator.fit(df)
 
     for N_DATA_GEN in gen_size_list:
-        if gan_method == "KDE":
-            samples = pd.DataFrame(kde_model.resample(N_DATA_GEN).transpose(1, 0))
-            samples_val = pd.DataFrame(kde_model.resample(N_DATA_GEN).transpose(1, 0))
-        elif gan_method == "TVAE" or gan_method == "CTGAN":
-            samples = syn_model.sample(N_DATA_GEN)
-            samples_val = syn_model.sample(N_DATA_GEN)
-        else:  # synthcity
-            samples = syn_model.generate(count=N_DATA_GEN)
-            samples_val = syn_model.generate(count=N_DATA_GEN)
+        samples = generator.generate(N_DATA_GEN)
+        samples_val = generator.generate(N_DATA_GEN)
 
         wd_n = min(len(samples), len(addition_set))
         eval_met_on_held_out = compute_wd(samples[:wd_n], addition_set[:wd_n])
@@ -391,9 +412,12 @@ def evaluate(
             [np.ones(training_set.shape[0]), np.zeros(test_set.shape[0])]
         ).astype(bool)
         # build another GAN for hayes and GAN_leak_cal
-        ctgan = CTGANSynthesizer(epochs=200)
+        ctgan = CTGAN(epochs=200)
         samples.columns = [str(_) for _ in range(dataset.shape[1])]
         ctgan.fit(samples)  # train a CTGAN on the generated examples
+
+        if ctgan._transformer is None or ctgan._discriminator is None:
+            raise RuntimeError()
 
         ctgan_representation = ctgan._transformer.transform(X_test_4baseline)
         print(ctgan_representation.shape)
@@ -409,7 +433,7 @@ def evaluate(
 
         acc, auc = compute_metrics_baseline(ctgan_score, Y_test_4baseline)
 
-        X_ref_GLC = ctgan.sample(addition_set.shape[0])
+        X_ref_GLC = ctgan.generate(addition_set.shape[0])
 
         baseline_results, baseline_scores = baselines(
             X_test_4baseline,
@@ -535,21 +559,7 @@ def evaluate(
             f"{N_DATA_GEN}_Eqn2Score"
         ] = log_p_rel
 
-        if gan_method == "adsgan":
-            np.save(
-                f"results_folder/Oct12_logger_{alias}_kde.npy",
-                performance_logger,
-            )
-        elif gan_method == "pategan":
-            np.save(
-                f"results_folder/Oct12_logger_{alias}_kde.npy",
-                performance_logger,
-            )
-        else:
-            np.save(
-                f"results_folder/Oct12_logger_{alias}_kde.npy",
-                performance_logger,
-            )
+    return performance_logger
 
 
 """ 2. training-test-addition split"""
@@ -562,7 +572,13 @@ for SIZE_PARAM in args.training_size_list:
             Process the dataset for covariant shift experiments
             """
 
+            generator = get_generator(
+                gan_method=args.gan_method,
+                epsilon_adsgan=args.epsilon_adsgan,
+                seed=args.gpu_idx if args.gpu_idx is not None else 0,
+            )
             evaluate(
+                generator,
                 dataset,
                 SIZE_PARAM,
                 ADDITION_SIZE,
@@ -571,8 +587,6 @@ for SIZE_PARAM in args.training_size_list:
                 zero_quantile=args.zero_quantile,
                 seed=args.gpu_idx if args.gpu_idx is not None else 0,
                 density_estimator=args.density_estimator,
-                gan_method=args.gan_method,
                 reference_kept_p=args.reference_kept_p,
-                epsilon_adsgan=args.epsilon_adsgan,
                 gen_size_list=args.gen_size_list,
             )
