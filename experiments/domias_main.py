@@ -72,7 +72,7 @@ parser.add_argument(
     "--training_epoch_list",
     nargs="+",
     type=int,
-    default=[100],
+    default=[2000],
     help="# training epochs",
 )
 parser.add_argument(
@@ -114,9 +114,6 @@ if args.dataset == "housing":
         return scaler.fit_transform(X)
 
     dataset = data_loader()
-    ndata = dataset.shape[0]
-elif args.dataset == "synthetic":
-    dataset = np.load(f"../dataset/synthetic_gaussian_{20}_{10}_{30000}_train.npy")
     ndata = dataset.shape[0]
 elif args.dataset == "Digits":
     scaler = StandardScaler()
