@@ -149,9 +149,12 @@ def evaluate_performance(
     df = pd.DataFrame(training_set)
     df.columns = [str(_) for _ in range(dataset.shape[1])]
 
+    # Train generator
+    print("Train generator")
     generator.fit(df)
 
     for N_DATA_GEN in gen_size_list:
+        print("Sampling from the generator", N_DATA_GEN)
         samples = generator.generate(N_DATA_GEN)
         samples_val = generator.generate(N_DATA_GEN)
 
@@ -181,7 +184,6 @@ def evaluate_performance(
 
         """ 4. density estimation / evaluation of Eqn.(1) & Eqn.(2)"""
         if density_estimator == "bnaf":
-            print(device, device)
             _gen, model_gen = density_estimator_trainer(
                 samples.values,
                 samples_val.values[: int(0.5 * N_DATA_GEN)],
@@ -222,7 +224,7 @@ def evaluate_performance(
             [np.ones(training_set.shape[0]), np.zeros(test_set.shape[0])]
         ).astype(bool)
         # build another GAN for hayes and GAN_leak_cal
-        ctgan = CTGAN(epochs=200)
+        ctgan = CTGAN(epochs=TRAINING_EPOCH, pac=1)
         samples.columns = [str(_) for _ in range(dataset.shape[1])]
         ctgan.fit(samples)  # train a CTGAN on the generated examples
 
@@ -230,7 +232,6 @@ def evaluate_performance(
             raise RuntimeError()
 
         ctgan_representation = ctgan._transformer.transform(X_test_4baseline)
-        print(ctgan_representation.shape)
         ctgan_score = (
             ctgan._discriminator(
                 torch.as_tensor(ctgan_representation).float().to(device)
@@ -239,7 +240,6 @@ def evaluate_performance(
             .detach()
             .numpy()
         )
-        print(ctgan_score.shape)
 
         acc, auc = compute_metrics_baseline(ctgan_score, Y_test_4baseline)
 

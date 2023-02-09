@@ -284,7 +284,7 @@ def density_estimator_trainer(
     data_test: Optional[np.ndarray] = None,
 ) -> Tuple[Callable, nn.Module]:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument(
         "--dataset",
         type=str,

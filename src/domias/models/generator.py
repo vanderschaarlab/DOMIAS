@@ -7,7 +7,7 @@ import pandas as pd
 
 class GeneratorInterface(metaclass=ABCMeta):
     @abstractmethod
-    def fit(self, data: pd.Dataframe) -> "GeneratorInterface":
+    def fit(self, data: pd.DataFrame) -> "GeneratorInterface":
         ...
 
     @abstractmethod

@@ -87,26 +87,6 @@ parser.add_argument(
     default="CelebA",
     choices=["housing", "synthetic", "CelebA"],
 )
-parser.add_argument("--learning_rate", type=float, default=1e-2)
-parser.add_argument("--batch_dim", type=int, default=100)
-parser.add_argument("--clip_norm", type=float, default=0.1)
-parser.add_argument("--epochs", type=int, default=50)  # 50
-parser.add_argument("--patience", type=int, default=20)
-parser.add_argument("--cooldown", type=int, default=10)
-parser.add_argument("--early_stopping", type=int, default=100)
-parser.add_argument("--decay", type=float, default=0.5)
-parser.add_argument("--min_lr", type=float, default=5e-4)
-parser.add_argument("--polyak", type=float, default=0.998)
-parser.add_argument("--flows", type=int, default=3)  # 5
-parser.add_argument("--layers", type=int, default=2)  #
-parser.add_argument("--hidden_dim", type=int, default=16)  # 32
-parser.add_argument(
-    "--residual", type=str, default="gated", choices=[None, "normal", "gated"]
-)
-parser.add_argument("--expname", type=str, default="")
-parser.add_argument("--load", type=str, default=None)
-parser.add_argument("--save", action="store_true")
-parser.add_argument("--tensorboard", type=str, default="tensorboard")
 
 parser.add_argument("--gpu_idx", default=2, type=int)
 parser.add_argument("--seed", type=int, default=2)

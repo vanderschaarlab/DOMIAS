@@ -175,7 +175,7 @@ class CTGAN(GeneratorInterface):
         log_frequency: bool = True,
         verbose: bool = False,
         epochs: int = 300,
-        pac: int = 10,
+        pac: int = 1,
         cuda: bool = True,
     ) -> None:
         super().__init__()

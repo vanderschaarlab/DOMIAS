@@ -10,6 +10,8 @@ from scipy import stats
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.neural_network import MLPClassifier
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def d(X: np.ndarray, Y: np.ndarray) -> np.ndarray:
     if len(X.shape) == 1:
@@ -78,16 +80,16 @@ def hayes_torch(X_test: np.ndarray, X_G: np.ndarray, X_ref: np.ndarray) -> np.nd
             return out
 
     batch_size = 256
-    clf = Net(input_dim=X_test.shape[1]).cuda()
+    clf = Net(input_dim=X_test.shape[1]).to(DEVICE)
     optimizer = torch.optim.Adam(clf.parameters(), lr=1e-3)
     loss_func = torch.nn.CrossEntropyLoss()
 
     all_x, all_y = np.vstack([X_G[:num], X_ref[:num]]), np.concatenate(
         [np.ones(num), np.zeros(num)]
     )
-    all_x = torch.as_tensor(all_x).float().cuda()
-    all_y = torch.as_tensor(all_y).long().cuda()
-    X_test = torch.as_tensor(X_test).float().cuda()
+    all_x = torch.as_tensor(all_x).float().to(DEVICE)
+    all_y = torch.as_tensor(all_y).long().to(DEVICE)
+    X_test = torch.as_tensor(X_test).float().to(DEVICE)
     for training_iter in range(int(300 * len(X_test) / batch_size)):
         rnd_idx = np.random.choice(len(X_test), batch_size)
         train_x, train_y = all_x[rnd_idx], all_y[rnd_idx]
@@ -138,6 +140,7 @@ def compute_metrics_baseline(
     # if len(np.unique(y_scores))<=2: # we don't want binarized scores
     #    raise ValueError('y_scores should contain non-binarized values, but only contains', np.unique(y_scores))
     y_pred = y_scores > np.median(y_scores)
+    print(y_true.shape, y_pred.shape)
     acc = accuracy_score(y_true, y_pred, sample_weight=sample_weight)
     auc = roc_auc_score(y_true, y_scores, sample_weight=sample_weight)
     return acc, auc
