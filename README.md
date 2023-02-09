@@ -1,4 +1,23 @@
-# Code for DOMIAS
+# DOMIAS: Membership Inference Attacks against Synthetic Data through Overfitting Detection
+
+[![Tests Python](https://github.com/vanderschaarlab/DOMIAS/actions/workflows/test.yml/badge.svg)](https://github.com/vanderschaarlab/DOMIAS/actions/workflows/test.yml)
+[![](https://pepy.tech/badge/DOMIAS)](https://pypi.org/project/synthcity/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/vanderschaarlab/DOMIAS/blob/main/LICENSE)
+[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/release/python-370/)
+[![about](https://img.shields.io/badge/about-The%20van%20der%20Schaar%20Lab-blue)](https://www.vanderschaar-lab.com/)
+
+## :rocket: Installation
+
+The library can be installed from PyPI using
+```bash
+$ pip install domias
+```
+or from source, using
+```bash
+$ pip install .
+```
+
+## Experiments
 
 1. **Experiments main paper**
 
@@ -30,3 +49,16 @@ and then
 ```python
 python3 celeba_eval.py --gpu_idx 0 --seed 0 --training_size 4000
 ```
+## :hammer: Tests
+
+Install the testing dependencies using
+```bash
+pip install .[testing]
+```
+The tests can be executed using
+```bash
+pytest -vsx
+```
+## Citing
+
+TODO
