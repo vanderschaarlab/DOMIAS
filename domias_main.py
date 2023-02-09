@@ -12,7 +12,6 @@ parser.add_argument(
     type=str,
     default="TVAE",
     choices=[
-        "adsgan-tf",
         "TVAE",
         "CTGAN",
         "KDE",
@@ -122,7 +121,6 @@ from sklearn import metrics
 from sklearn.metrics import accuracy_score
 from metrics.combined import compute_metrics
 import os
-from adsgan import adsgan
 from metrics.feature_distribution import feature_distribution
 from metrics.compute_wd import compute_wd
 from metrics.compute_identifiability import compute_identifiability
@@ -149,38 +147,6 @@ def compute_bw(X, X2=None, num_runs=10):
         print("bw", i, ":", bw, " - score:", scores[i])
 
     return bws[np.argmax(scores)]
-
-
-def exp_main(args, orig_data_frame):
-
-    orig_data = orig_data_frame
-    # Generate synthetic data
-    params = dict()
-    params["lamda"] = args.lamda
-    params["iterations"] = args.iterations
-    params["h_dim"] = args.h_dim
-    params["z_dim"] = args.z_dim
-    params["mb_size"] = args.mb_size
-
-    synth_data_list = adsgan(orig_data, params)
-    synth_data = synth_data_list[0]
-    print("Finish synthetic data generation")
-
-    # Performance measures
-    # (1) Feature distributions
-    feat_dist = feature_distribution(orig_data, synth_data)
-    print("Finish computing feature distributions")
-
-    # (2) Wasserstein Distance (WD)
-    print("Start computing Wasserstein Distance")
-    wd_measure = compute_wd(orig_data, synth_data, params)
-    print("WD measure: " + str(wd_measure))
-
-    # (3) Identifiability
-    identifiability = compute_identifiability(orig_data, synth_data)
-    print("Identifiability measure: " + str(identifiability))
-
-    return orig_data, synth_data_list, [feat_dist, wd_measure, identifiability]
 
 
 performance_logger = {}
@@ -386,8 +352,6 @@ for SIZE_PARAM in args.training_size_list:
                 syn_model.fit(df)
             elif args.gan_method == "KDE":
                 kde_model = stats.gaussian_kde(training_set.transpose(1, 0))
-            elif args.gan_method == "adsgan-tf":
-                pass
             else:  # synthcity
                 syn_model = Plugins().get(args.gan_method)
                 if args.gan_method == "adsgan":
@@ -409,32 +373,6 @@ for SIZE_PARAM in args.training_size_list:
                 elif args.gan_method == "TVAE" or args.gan_method == "CTGAN":
                     samples = syn_model.sample(N_DATA_GEN)
                     samples_val = syn_model.sample(N_DATA_GEN)
-                elif args.gan_method == "adsgan-tf":
-
-                    class adsargs(object):
-                        def __init__(
-                            self,
-                        ):
-                            self.iterations = 10000
-                            self.h_dim = 30
-                            self.z_dim = 10
-                            self.mb_size = 25
-                            self.lamda = args.epsilon_adsgan
-                            self.training_size = SIZE_PARAM
-
-                    adsargs = adsargs()
-                    # Calls main function
-                    orig_data, synth_data_list, measures = exp_main(adsargs, df)
-                    samples = pd.DataFrame(
-                        np.asarray(synth_data_list).reshape(-1, dataset.shape[1])[
-                            :N_DATA_GEN
-                        ]
-                    )
-                    samples_val = pd.DataFrame(
-                        np.asarray(synth_data_list).reshape(-1, dataset.shape[1])[
-                            N_DATA_GEN : 2 * N_DATA_GEN
-                        ]
-                    )
                 else:  # synthcity
                     samples = syn_model.generate(count=N_DATA_GEN)
                     samples_val = syn_model.generate(count=N_DATA_GEN)
