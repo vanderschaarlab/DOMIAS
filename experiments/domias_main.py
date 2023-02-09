@@ -120,7 +120,7 @@ parser.add_argument("--zero_quantile", type=float, default=0.3)
 parser.add_argument("--reference_kept_p", type=float, default=1.0)
 
 args = parser.parse_args()
-args.device = f"cuda:{args.gpu_idx}"
+args.device = DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 alias = f"v3kde1_shift{args.shifted_column}_zq{args.zero_quantile}_kp{args.reference_kept_p}_{args.batch_dim}_{args.hidden_dim}_{args.layers}_{args.epochs}_{args.gan_method}_{args.epsilon_adsgan}_{args.density_estimator}_{args.dataset}_trn_sz{args.training_size_list}_ref_sz{args.held_out_size_list}_gen_sz{args.gen_size_list}_{args.seed}"
 
@@ -227,12 +227,12 @@ def evaluate(
     TRAINING_EPOCH: int,
     shifted_column: Optional[int] = None,
     zero_quantile: float = 0.3,
-    gpu_idx: int = 0,
     density_estimator: str = "prior",
     gan_method: str = "TVAE",
     reference_kept_p: float = 1.0,
     epsilon_adsgan: float = 0,
     gen_size_list: list = [10000],
+    seed: int = 0,
 ) -> None:
 
     norm = normal_func_feat(dataset)
@@ -305,7 +305,7 @@ def evaluate(
         syn_model = Plugins().get(gan_method)
         if gan_method == "adsgan":
             syn_model.lambda_identifiability_penalty = epsilon_adsgan
-            syn_model.seed = gpu_idx
+            syn_model.seed = seed
         elif gan_method == "pategan":
             syn_model.dp_delta = 1e-5
             syn_model.dp_epsilon = epsilon_adsgan
@@ -340,11 +340,11 @@ def evaluate(
             eval_met_on_held_out,
         )
 
-        np.save(workspace / f"{gpu_idx}_synth_samples", samples)
-        np.save(workspace / f"{gpu_idx}_training_set", training_set)
-        np.save(workspace / f"{gpu_idx}_test_set", test_set)
-        np.save(workspace / f"{gpu_idx}_ref_set1", addition_set)
-        np.save(workspace / f"{gpu_idx}_ref_set2", addition_set2)
+        np.save(workspace / f"{seed}_synth_samples", samples)
+        np.save(workspace / f"{seed}_training_set", training_set)
+        np.save(workspace / f"{seed}_test_set", test_set)
+        np.save(workspace / f"{seed}_ref_set1", addition_set)
+        np.save(workspace / f"{seed}_ref_set2", addition_set2)
 
         """ 4. density estimation / evaluation of Eqn.(1) & Eqn.(2)"""
         if density_estimator == "bnaf":
@@ -567,7 +567,7 @@ for SIZE_PARAM in args.training_size_list:
                 TRAINING_EPOCH,
                 shifted_column=args.shifted_column,
                 zero_quantile=args.zero_quantile,
-                gpu_idx=args.gpu_idx,
+                seed=args.gpu_idx if args.gpu_idx is not None else 0,
                 density_estimator=args.density_estimator,
                 gan_method=args.gan_method,
                 reference_kept_p=args.reference_kept_p,
