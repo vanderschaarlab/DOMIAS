@@ -164,7 +164,7 @@ def get_generator(
 
         def fit(self, data: pd.DataFrame) -> "LocalGenerator":
             if self.method == "KDE":
-                self.model = stats.gaussian_kde(data.transpose(1, 0))
+                self.model = stats.gaussian_kde(np.transpose(data))
             else:
                 self.model.fit(data)
 
@@ -172,7 +172,7 @@ def get_generator(
 
         def generate(self, count: int) -> pd.DataFrame:
             if gan_method == "KDE":
-                samples = pd.DataFrame(self.model.resample(count).transpose(1, 0))
+                samples = pd.DataFrame(np.transpose(self.model.resample(count)))
             elif gan_method == "TVAE":
                 samples = self.model.sample(count)
             else:  # synthcity

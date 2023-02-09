@@ -47,8 +47,11 @@ class normal_func_feat:
     def __init__(
         self,
         X: np.ndarray,
+        continuous: list,
     ) -> None:
-        self.feat = np.ones(X.shape[1]).astype(bool)
+        if np.any(np.array(continuous) > 1) or len(continuous) != X.shape[1]:
+            raise ValueError("Continous variable needs to be boolean")
+        self.feat = np.array(continuous).astype(bool)
 
         if np.sum(self.feat) == 0:
             raise ValueError("there needs to be at least one continuous feature")
@@ -83,7 +86,14 @@ def evaluate_performance(
 
     workspace.mkdir(parents=True, exist_ok=True)
 
-    norm = normal_func_feat(dataset)
+    continuous = []
+    for i in np.arange(dataset.shape[1]):
+        if len(np.unique(dataset[:, i])) < 10:
+            continuous.append(0)
+        else:
+            continuous.append(1)
+
+    norm = normal_func_feat(dataset, continuous)
 
     if shifted_column is not None:
         thres = np.quantile(dataset[:, shifted_column], zero_quantile) + 0.01

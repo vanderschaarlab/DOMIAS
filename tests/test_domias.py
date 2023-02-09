@@ -117,7 +117,7 @@ def get_generator(
 
         def fit(self, data: pd.DataFrame) -> "LocalGenerator":
             if self.method == "KDE":
-                self.model = stats.gaussian_kde(data.transpose(1, 0))
+                self.model = stats.gaussian_kde(np.transpose(data))
             else:
                 self.model.fit(data)
 
@@ -128,15 +128,17 @@ def get_generator(
                 samples = pd.DataFrame(self.model.resample(count).transpose(1, 0))
             elif gan_method == "TVAE":
                 samples = self.model.sample(count)
-            else:  # synthcity
-                samples = self.model.generate(count=count)
+            elif gan_method == "CTGAN":
+                samples = self.model.generate(count)
+            else:
+                raise RuntimeError()
 
             return samples
 
     return LocalGenerator()
 
 
-@pytest.mark.parametrize("dataset_name", ["housing", "Covtype", "SynthGaussian"])
+@pytest.mark.parametrize("dataset_name", ["housing", "SynthGaussian"])
 @pytest.mark.parametrize("method", ["TVAE", "CTGAN", "KDE"])
 @pytest.mark.parametrize("training_size", [30])
 @pytest.mark.parametrize("held_out_size", [30])

@@ -166,10 +166,10 @@ def baselines(
             acc, auc = compute_metrics_baseline(
                 y_scores, Y_test, sample_weight=sample_weight
             )
-            results = results.append(
-                {"name": name, "acc": acc, "auc": auc}, ignore_index=True
+            results = pd.concat(
+                [results, pd.DataFrame({"name": name, "acc": acc, "auc": auc})],
+                ignore_index=True,
             )
         except BaseException:
-            print("name", name)
             np.save("temp_debug_scores", y_scores)
     return results, score
