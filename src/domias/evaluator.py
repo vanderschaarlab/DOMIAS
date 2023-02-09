@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 # stdlib
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 # third party
 import numpy as np
@@ -47,14 +47,8 @@ class normal_func_feat:
     def __init__(
         self,
         X: np.ndarray,
-        continuous: Union[list, str, np.ndarray] = [1, 0, 0, 0, 0, 0, 0, 0],
     ) -> None:
-        if continuous == "all":
-            self.feat = np.ones(X.shape[1]).astype(bool)
-        else:
-            if np.any(np.array(continuous) > 1) or len(continuous) != X.shape[1]:
-                raise ValueError("Continous variable needs to be boolean")
-            self.feat = np.array(continuous).astype(bool)
+        self.feat = np.ones(X.shape[1]).astype(bool)
 
         if np.sum(self.feat) == 0:
             raise ValueError("there needs to be at least one continuous feature")
@@ -65,7 +59,6 @@ class normal_func_feat:
 
         self.var = np.std(X[:, self.feat], axis=0) ** 2
         self.mean = np.mean(X[:, self.feat], axis=0)
-        # self.rv = multivariate_normal(mean, np.diag(var))
 
     def pdf(self, Z: np.ndarray) -> np.ndarray:
         return multivariate_normal.pdf(Z[:, self.feat], self.mean, np.diag(self.var))

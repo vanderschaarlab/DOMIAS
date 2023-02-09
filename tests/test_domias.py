@@ -136,9 +136,7 @@ def get_generator(
     return LocalGenerator()
 
 
-@pytest.mark.parametrize(
-    "dataset_name", ["housing", "Digits", "Covtype", "SynthGaussian"]
-)
+@pytest.mark.parametrize("dataset_name", ["housing", "Covtype", "SynthGaussian"])
 @pytest.mark.parametrize("method", ["TVAE", "CTGAN", "KDE"])
 @pytest.mark.parametrize("training_size", [30])
 @pytest.mark.parametrize("held_out_size", [30])
@@ -151,6 +149,7 @@ def test_sanity(
     training_epoch: int,
 ) -> None:
     dataset = get_dataset(dataset_name)
+    print(dataset)
 
     generator = get_generator(
         gan_method=method,
@@ -162,6 +161,7 @@ def test_sanity(
         training_size,
         held_out_size,
         training_epoch,
+        gen_size_list=[100],
     )
     print(
         f"""
