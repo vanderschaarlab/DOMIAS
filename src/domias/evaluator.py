@@ -259,7 +259,6 @@ def evaluate_performance(
             {"name": "hayes", "acc": acc, "auc": auc}, ignore_index=True
         )
         baseline_scores["hayes"] = ctgan_score
-        print("baselines:", baseline_results)
         performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
             f"{N_DATA_GEN}_Baselines"
         ] = baseline_results
@@ -363,7 +362,6 @@ def evaluate_performance(
             performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
                 f"{N_DATA_GEN}_Eqn2"
             ] = (p_G_train / p_R_train > thres).sum(0) / SIZE_PARAM
-        # print('Eqn.(2), test set prediction acc', (p_G_test-p_R_test > thres).sum(0) / SIZE_PARAM)
 
         performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
             f"{N_DATA_GEN}_Eqn2AUC"

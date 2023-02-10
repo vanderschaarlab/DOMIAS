@@ -98,7 +98,6 @@ def hayes_torch(X_test: np.ndarray, X_G: np.ndarray, X_ref: np.ndarray) -> np.nd
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        # print(loss.cpu().detach().item())
     return_out = clf(X_test)[:, 1].cpu().detach().numpy()
     torch.cuda.empty_cache()
     return return_out
@@ -140,7 +139,6 @@ def compute_metrics_baseline(
     # if len(np.unique(y_scores))<=2: # we don't want binarized scores
     #    raise ValueError('y_scores should contain non-binarized values, but only contains', np.unique(y_scores))
     y_pred = y_scores > np.median(y_scores)
-    print(y_true.shape, y_pred.shape)
     acc = accuracy_score(y_true, y_pred, sample_weight=sample_weight)
     auc = roc_auc_score(y_true, y_scores, sample_weight=sample_weight)
     return acc, auc

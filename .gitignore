@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 synth_folder
 workspace
+logs
+temp_debug*
