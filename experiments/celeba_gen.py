@@ -20,11 +20,11 @@ from tqdm.notebook import tqdm
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--gpu_idx", default=2, type=int)
+parser.add_argument("--gpu_idx", default=None, type=int)
 parser.add_argument("--seed", type=int, default=2)
 parser.add_argument("--rep_dim", type=int, default=128)
-parser.add_argument("--ae_epoch", type=int, default=100)
-parser.add_argument("--dcgan_epoch", type=int, default=1000)
+parser.add_argument("--ae_epoch", type=int, default=10)  # 1000
+parser.add_argument("--dcgan_epoch", type=int, default=10)  # 1000
 parser.add_argument("--training_size", type=int, default=1000)
 
 
@@ -39,6 +39,8 @@ alias = f"{SEED}_{GPU_IDX}_{LATENT_REPRESENTATION_DIM}_tsz{args.training_size}"
 
 
 os.system(f"mkdir -p debug_train_{args.training_size}/debug_train_{args.training_size}")
+os.system("mkdir -p celebA_representation")
+
 for i in range(int(args.training_size / 1000)):
     os.system(
         f"cp -r data/CelebA-Data/subset_5000/subset_5000/00{i}* debug_train_{args.training_size}/debug_train_{args.training_size}/"
@@ -441,9 +443,7 @@ N_SYNTH = 10000
 synth_representation = np.zeros((N_SYNTH, HIDDEN))
 if N_SYNTH > 50:
     for i in range(int(N_SYNTH / 50)):
-        # latent_noise = torch.randn(50, latent_size, 1, 1, device=device)
         latent_noise = torch.randn(50, beta_vae.z_dim, device=device)
-        # beta_vae.decoder(latent_noise)#.shape
         g_images = beta_vae.decoder(latent_noise)
         synth_representation[i * 50 : (i + 1) * 50] = (
             encoder(g_images).cpu().detach().squeeze().numpy()
@@ -454,11 +454,12 @@ np.save(
     f"celebA_representation/AISTATS_betavae_repres_synth_{alias}", synth_representation
 )
 
-N_REAL = 999
+N_REAL = len(dataset)
 real_representation = np.zeros((N_REAL, HIDDEN))
 i = 0
 for r_images, _ in tqdm(dataloader):
-    real_representation[i * batch_size : i * batch_size + batch_size] = (
+    local_bs = min(batch_size, len(r_images))
+    real_representation[i * batch_size : i * batch_size + local_bs] = (
         encoder(r_images).cpu().detach().squeeze().numpy()
     )
     i += 1
@@ -469,7 +470,7 @@ np.save(
 
 
 ref_dataset = ImageFolder(
-    "../debug_ref",
+    "debug_ref",
     transform=tf.Compose(
         [
             tf.Resize(image_size),
@@ -486,12 +487,13 @@ ref_dataloader = DataLoader(
 ref_dataloader = DeviceDataLoader(ref_dataloader, device)
 
 
-N_REF = 10000
+N_REF = len(ref_dataset)
 
 ref_representation = np.zeros((N_REF, HIDDEN))
 i = 0
 for r_images, _ in tqdm(ref_dataloader):
-    ref_representation[i * batch_size : i * batch_size + batch_size] = (
+    local_bs = min(batch_size, len(r_images))
+    ref_representation[i * batch_size : i * batch_size + local_bs] = (
         encoder(r_images).cpu().detach().squeeze().numpy()
     )
     i += 1
@@ -500,7 +502,7 @@ for r_images, _ in tqdm(ref_dataloader):
 np.save(f"celebA_representation/AISTATS_betavae_repres_ref_{alias}", ref_representation)
 
 test_dataset = ImageFolder(
-    f"../debug_test_{args.training_size}",
+    f"debug_test_{args.training_size}",
     transform=tf.Compose(
         [
             tf.Resize(image_size),
@@ -516,12 +518,13 @@ test_dataloader = DataLoader(
 )
 test_dataloader = DeviceDataLoader(test_dataloader, device)
 
-N_TEST = 1000
+N_TEST = len(test_dataset)
 
 test_representation = np.zeros((N_TEST, HIDDEN))
 i = 0
 for r_images, _ in tqdm(test_dataloader):
-    test_representation[i * batch_size : i * batch_size + batch_size] = (
+    local_bs = min(batch_size, len(r_images))
+    test_representation[i * batch_size : i * batch_size + local_bs] = (
         encoder(r_images).cpu().detach().squeeze().numpy()
     )
     i += 1
