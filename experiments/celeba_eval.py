@@ -172,8 +172,10 @@ for SIZE_PARAM in args.training_size_list:
             samples.columns = [str(_) for _ in range(training_set.shape[1])]
             ctgan.fit(samples)  # train a CTGAN on the generated examples
 
+            if ctgan._transformer is None or ctgan._discriminator is None:
+                raise RuntimeError()
+
             ctgan_representation = ctgan._transformer.transform(X_test_4baseline)
-            print(ctgan_representation.shape)
             ctgan_score = (
                 ctgan._discriminator(
                     torch.as_tensor(ctgan_representation).float().to(device)
@@ -182,7 +184,6 @@ for SIZE_PARAM in args.training_size_list:
                 .detach()
                 .numpy()
             )
-            print(ctgan_score.shape)
 
             acc, auc = compute_metrics_baseline(ctgan_score, Y_test_4baseline)
 
