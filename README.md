@@ -27,7 +27,8 @@ $ pip install .
 
 To reproduce results for DOMIAS, baselines, and ablated models, run
 ```python
-python3 experiments/domias_main.py --seed 0 --gan_method TVAE --dataset housing --training_size_list 30 50 100 300 500 1000 --held_out_size_list 10000 --gen_size_list 10000 --training_epoch_list 2000
+cd experiments
+python3 domias_main.py --seed 0 --gan_method TVAE --dataset housing --training_size_list 30 50 100 300 500 1000 --held_out_size_list 10000 --gen_size_list 10000 --training_epoch_list 2000
 ```
 changing arguments training_size_list, held_out_size_list, gen_size_list, and training_epoch_list for specific experiments over ranges (Experiments 5.1 and 5.2, see Appendix A for details) and gan_method for generative model of interest.
 
@@ -45,13 +46,15 @@ If using prior knowledge (i.e., no reference dataset setting), add
 
 3. **Experiment images (Appendix B.3)**
 
+__Note__: The CelebA dataset must be available in the `experiments/data` folder.
+
 To run experiment with the CelebA dataset, first run
 ```python
-python3 experiments/celeba_gen.py --seed 0 --training_size 4000
+cd experiments && python3 celeba_gen.py --seed 0 --training_size 4000
 ```
 and then
 ```python
-python3 experiments/celeba_eval.py --gpu_idx 0 --seed 0 --training_size 4000
+cd experiments && python3 celeba_eval.py --seed 0 --training_size 4000
 ```
 ## :hammer: Tests
 

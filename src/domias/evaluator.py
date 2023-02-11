@@ -127,7 +127,6 @@ def evaluate_performance(
         if reference_kept_p > 0:
             addition_set = np.concatenate((addition_set_A1, addition_set_A0_kept), 0)
             addition_set2 = np.concatenate((addition_set2_A1, addition_set2_A0_kept), 0)
-            # test_set = np.concatenate((test_set_A1, test_set_A0_kept), 0)
         else:
             addition_set = addition_set_A1
             addition_set2 = addition_set2_A1
