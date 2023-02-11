@@ -38,31 +38,32 @@ AE_EPOCH = args.ae_epoch
 alias = f"{SEED}_{GPU_IDX}_{LATENT_REPRESENTATION_DIM}_tsz{args.training_size}"
 
 
-os.system(f"mkdir ../debug_train_{args.training_size}")
-os.system(f"mkdir ../debug_train_{args.training_size}/debug_train_{args.training_size}")
+os.system(f"mkdir -p debug_train_{args.training_size}/debug_train_{args.training_size}")
 for i in range(int(args.training_size / 1000)):
     os.system(
-        f"cp -r ../subset_5000/subset_5000/00{i}* ../debug_train_{args.training_size}/debug_train_{args.training_size}/"
+        f"cp -r data/CelebA-Data/subset_5000/subset_5000/00{i}* debug_train_{args.training_size}/debug_train_{args.training_size}/"
     )
 
 
-os.system("mkdir ../debug_ref")
-os.system("mkdir ../debug_ref/debug_ref")
+os.system("mkdir -p debug_ref/debug_ref")
 for i in range(5):
-    os.system("cp -r ../subset_5k15k/subset_5k15k/00{5+i}* ../debug_ref/debug_ref/")
-for i in range(5):
-    os.system("cp -r ../subset_5k15k/subset_5k15k/01{i}* ../debug_ref/debug_ref/")
-
-
-os.system(f"mkdir ../debug_test_{args.training_size}")
-os.system(f"mkdir ../debug_test_{args.training_size}/debug_test_{args.training_size}")
-for i in range(int(args.training_size / 1000)):
     os.system(
-        f"cp -r ../subset_15k20k/subset_15k20k/01{5+i}* ../debug_test_{args.training_size}/debug_test_{args.training_size}/"
+        f"cp -r data/CelebA-Data/subset_5k15k/subset_5k15k/00{5+i}* debug_ref/debug_ref/"
+    )
+for i in range(5):
+    os.system(
+        f"cp -r data/CelebA-Data/subset_5k15k/subset_5k15k/01{i}* debug_ref/debug_ref/"
     )
 
 
-dirc = f"../debug_train_{args.training_size}"
+os.system(f"mkdir -p debug_test_{args.training_size}/debug_test_{args.training_size}")
+for i in range(int(args.training_size / 1000)):
+    os.system(
+        f"cp -r data/CelebA-Data/subset_15k20k/subset_15k20k/01{5+i}* debug_test_{args.training_size}/debug_test_{args.training_size}/"
+    )
+
+
+dirc = f"debug_train_{args.training_size}"
 device = torch.device(f"cuda:{GPU_IDX}" if torch.cuda.is_available() else "cpu")
 
 print(device)

@@ -131,3 +131,6 @@ synth_folder
 workspace
 logs
 temp_debug*
+*.bkp
+debug*
+data
