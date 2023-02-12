@@ -76,7 +76,7 @@ parser.add_argument(
     help="# training epochs",
 )
 parser.add_argument(
-    "--gen_size_list",
+    "--synthetic_sizes",
     nargs="+",
     type=int,
     default=[10000],
@@ -143,9 +143,9 @@ def get_generator(
     class LocalGenerator(GeneratorInterface):
         def __init__(self) -> None:
             if gan_method == "TVAE":
-                syn_model = TVAE(epochs=TRAINING_EPOCH)
+                syn_model = TVAE(epochs=training_epochs)
             elif gan_method == "CTGAN":
-                syn_model = CTGAN(epochs=TRAINING_EPOCH)
+                syn_model = CTGAN(epochs=training_epochs)
             elif gan_method == "KDE":
                 syn_model = None
             else:  # synthcity
@@ -181,10 +181,10 @@ def get_generator(
 
 
 """ 2. training-test-addition split"""
-for SIZE_PARAM in args.training_size_list:
-    for ADDITION_SIZE in args.held_out_size_list:
-        for TRAINING_EPOCH in args.training_epoch_list:
-            if SIZE_PARAM * 2 + ADDITION_SIZE >= ndata:
+for training_size in args.training_size_list:
+    for held_out_size in args.held_out_size_list:
+        for training_epochs in args.training_epoch_list:
+            if training_size * 2 + held_out_size >= ndata:
                 continue
             """
             Process the dataset for covariant shift experiments
@@ -198,21 +198,20 @@ for SIZE_PARAM in args.training_size_list:
             perf = evaluate_performance(
                 generator,
                 dataset,
-                SIZE_PARAM,
-                ADDITION_SIZE,
-                TRAINING_EPOCH,
+                training_size,
+                held_out_size,
+                training_epochs,
                 shifted_column=args.shifted_column,
                 zero_quantile=args.zero_quantile,
                 seed=args.gpu_idx if args.gpu_idx is not None else 0,
                 density_estimator=args.density_estimator,
                 reference_kept_p=args.reference_kept_p,
-                gen_size_list=args.gen_size_list,
-                workspace=workspace,
+                synthetic_sizes=args.synthetic_sizes,
                 device=DEVICE,
             )
             print(
                 f"""
-                SIZE_PARAM = {SIZE_PARAM} ADDITION_SIZE  = {ADDITION_SIZE} TRAINING_EPOCH = {TRAINING_EPOCH}
+                training_size = {training_size} held_out_size  = {held_out_size} training_epochs = {training_epochs}
                     metrics = {perf}
             """
             )

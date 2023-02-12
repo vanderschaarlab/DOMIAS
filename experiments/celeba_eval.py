@@ -48,7 +48,7 @@ parser.add_argument(
     help="# training epochs",
 )
 parser.add_argument(
-    "--gen_size_list",
+    "--synthetic_sizes",
     nargs="+",
     type=int,
     default=[100],  # 50000
@@ -96,11 +96,13 @@ addition_set2 = np.load(
 )[4500:]
 
 """ 2. training-test-addition split"""
-for SIZE_PARAM in args.training_size_list:
-    for ADDITION_SIZE in args.held_out_size_list:
-        for TRAINING_EPOCH in args.training_epoch_list:
-            performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"] = {}
-            for N_DATA_GEN in args.gen_size_list:
+for training_size in args.training_size_list:
+    for held_out_size in args.held_out_size_list:
+        for training_epochs in args.training_epoch_list:
+            performance_logger[
+                f"{training_size}_{training_epochs}_{held_out_size}"
+            ] = {}
+            for N_DATA_GEN in args.synthetic_sizes:
                 samples = pd.DataFrame(
                     np.load(
                         f"{PATH_CELEB_REPRESENTATION}/AISTATS_betavae_repres_synth_{alias}.npy"
@@ -113,18 +115,18 @@ for SIZE_PARAM in args.training_size_list:
                 )
             wd_n = min(len(samples), len(addition_set))
             eval_met_on_held_out = compute_wd(samples[:wd_n], addition_set[:wd_n])
-            performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
+            performance_logger[f"{training_size}_{training_epochs}_{held_out_size}"][
                 f"{N_DATA_GEN}_evaluation"
             ] = eval_met_on_held_out
             print(
                 "SIZE: ",
-                SIZE_PARAM,
+                training_size,
                 "TVAE EPOCH: ",
-                TRAINING_EPOCH,
+                training_epochs,
                 "N_DATA_GEN: ",
                 N_DATA_GEN,
-                "ADDITION_SIZE: ",
-                ADDITION_SIZE,
+                "held_out_size: ",
+                held_out_size,
                 "Performance (Sample-Quality): ",
                 eval_met_on_held_out,
             )
@@ -138,8 +140,8 @@ for SIZE_PARAM in args.training_size_list:
                 )
                 _data, model_data = density_estimator_trainer(
                     addition_set,
-                    addition_set2[: int(0.5 * ADDITION_SIZE)],
-                    addition_set2[: int(0.5 * ADDITION_SIZE)],
+                    addition_set2[: int(0.5 * held_out_size)],
+                    addition_set2[: int(0.5 * held_out_size)],
                 )
                 p_G_train = (
                     compute_log_p_x(
@@ -196,21 +198,18 @@ for SIZE_PARAM in args.training_size_list:
                 addition_set,
                 X_ref_GLC,
             )
-            baseline_results = baseline_results.append(
-                {"name": "hayes", "acc": acc, "auc": auc}, ignore_index=True
-            )
+            baseline_results["hayes"] = {"accuracy": acc, "aucroc": auc}
             baseline_scores["hayes"] = ctgan_score
-            print("baselines:", baseline_results)
-            performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
+            performance_logger[f"{training_size}_{training_epochs}_{held_out_size}"][
                 f"{N_DATA_GEN}_Baselines"
             ] = baseline_results
-            performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
+            performance_logger[f"{training_size}_{training_epochs}_{held_out_size}"][
                 f"{N_DATA_GEN}_BaselineScore"
             ] = baseline_scores
-            performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
+            performance_logger[f"{training_size}_{training_epochs}_{held_out_size}"][
                 f"{N_DATA_GEN}_Xtest"
             ] = X_test_4baseline
-            performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
+            performance_logger[f"{training_size}_{training_epochs}_{held_out_size}"][
                 f"{N_DATA_GEN}_Ytest"
             ] = Y_test_4baseline
 
@@ -228,16 +227,16 @@ for SIZE_PARAM in args.training_size_list:
 
             print(
                 "Eqn.(1), training set prediction acc",
-                (p_G_train > thres).sum(0) / SIZE_PARAM,
+                (p_G_train > thres).sum(0) / training_size,
             )
             print("Eqn.(1), AUC", auc)
-            performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
+            performance_logger[f"{training_size}_{training_epochs}_{held_out_size}"][
                 f"{N_DATA_GEN}_Eqn1"
-            ] = (p_G_train > thres).sum(0) / SIZE_PARAM
-            performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
+            ] = (p_G_train > thres).sum(0) / training_size
+            performance_logger[f"{training_size}_{training_epochs}_{held_out_size}"][
                 f"{N_DATA_GEN}_Eqn1AUC"
             ] = auc
-            performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
+            performance_logger[f"{training_size}_{training_epochs}_{held_out_size}"][
                 f"{N_DATA_GEN}_Eqn1Score"
             ] = log_p_test
             # eqn2: \prop P_G(x_i)/P_X(x_i)
@@ -279,27 +278,31 @@ for SIZE_PARAM in args.training_size_list:
             if args.density_estimator == "bnaf":
                 print(
                     "Eqn.(2), training set prediction acc",
-                    (p_G_train - p_R_train >= thres).sum(0) / SIZE_PARAM,
+                    (p_G_train - p_R_train >= thres).sum(0) / training_size,
                 )
                 print("Eqn.(2), AUC", auc)
-                performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
-                    f"{N_DATA_GEN}_Eqn2"
-                ] = (p_G_train - p_R_train > thres).sum(0) / SIZE_PARAM
+                performance_logger[
+                    f"{training_size}_{training_epochs}_{held_out_size}"
+                ][f"{N_DATA_GEN}_Eqn2"] = (p_G_train - p_R_train > thres).sum(
+                    0
+                ) / training_size
             elif args.density_estimator == "kde":
                 print(
                     "Eqn.(2), training set prediction acc",
-                    (p_G_train / p_R_train >= thres).sum(0) / SIZE_PARAM,
+                    (p_G_train / p_R_train >= thres).sum(0) / training_size,
                 )
                 print("Eqn.(2), AUC", auc)
-                performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
-                    f"{N_DATA_GEN}_Eqn2"
-                ] = (p_G_train / p_R_train > thres).sum(0) / SIZE_PARAM
-            # print('Eqn.(2), test set prediction acc', (p_G_test-p_R_test > thres).sum(0) / SIZE_PARAM)
+                performance_logger[
+                    f"{training_size}_{training_epochs}_{held_out_size}"
+                ][f"{N_DATA_GEN}_Eqn2"] = (p_G_train / p_R_train > thres).sum(
+                    0
+                ) / training_size
+            # print('Eqn.(2), test set prediction acc', (p_G_test-p_R_test > thres).sum(0) / training_size)
 
-            performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
+            performance_logger[f"{training_size}_{training_epochs}_{held_out_size}"][
                 f"{N_DATA_GEN}_Eqn2AUC"
             ] = auc
-            performance_logger[f"{SIZE_PARAM}_{TRAINING_EPOCH}_{ADDITION_SIZE}"][
+            performance_logger[f"{training_size}_{training_epochs}_{held_out_size}"][
                 f"{N_DATA_GEN}_Eqn2Score"
             ] = log_p_rel
 
