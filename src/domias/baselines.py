@@ -3,7 +3,6 @@ from typing import Optional, Tuple
 
 # third party
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn.functional as F
 from scipy import stats
@@ -151,23 +150,20 @@ def baselines(
     X_ref: np.ndarray,
     X_ref_GLC: np.ndarray,
     sample_weight: Optional[np.ndarray] = None,
-) -> Tuple[pd.DataFrame, dict]:
+) -> Tuple[dict, dict]:
     score = {}
-    score["Eq. 1"], score["Eq. 2"] = kde_baseline(X_test, X_G, X_ref)
+    score["baseline_eq1"], score["baseline_eq2"] = kde_baseline(X_test, X_G, X_ref)
     score["hayes_torch"] = hayes_torch(X_test, X_G, X_ref)
     score["hilprecht"] = hilprecht(X_test, X_G)
-    score["GAN-leaks"] = GAN_leaks(X_test, X_G)
-    score["GAN-leaks_cal"] = GAN_leaks_cal(X_test, X_G, X_ref_GLC)
-    results = pd.DataFrame(columns=["name", "acc", "auc"])
+    score["gan_leaks"] = GAN_leaks(X_test, X_G)
+    score["gan_leaks_cal"] = GAN_leaks_cal(X_test, X_G, X_ref_GLC)
+    results = {}
     for name, y_scores in score.items():
-        try:
-            acc, auc = compute_metrics_baseline(
-                y_scores, Y_test, sample_weight=sample_weight
-            )
-            results = pd.concat(
-                [results, pd.DataFrame({"name": name, "acc": acc, "auc": auc})],
-                ignore_index=True,
-            )
-        except BaseException:
-            np.save("temp_debug_scores", y_scores)
+        acc, auc = compute_metrics_baseline(
+            y_scores, Y_test, sample_weight=sample_weight
+        )
+        results[name] = {
+            "accuracy": acc,
+            "aucroc": auc,
+        }
     return results, score

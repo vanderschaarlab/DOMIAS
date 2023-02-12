@@ -100,7 +100,6 @@ def test_sanity(
     density_estimator: str,
 ) -> None:
     dataset = get_dataset(dataset_name)
-    print(dataset)
 
     generator = get_generator(
         gan_method=method,
@@ -115,9 +114,27 @@ def test_sanity(
         gen_size_list=[100],
         density_estimator=density_estimator,
     )
-    print(
-        f"""
-            SIZE_PARAM = {training_size} ADDITION_SIZE  = {held_out_size} TRAINING_EPOCH = {training_epoch}
-                metrics = {perf}
-        """
-    )
+
+    assert 100 in perf
+    results = perf[100]
+
+    assert "MIA_performance" in results
+    assert "MIA_scores" in results
+
+    tests = [
+        "baseline_eq1",
+        "baseline_eq2",
+        "hayes_torch",
+        "hilprecht",
+        "gan_leaks",
+        "gan_leaks_cal",
+        "hayes_gan",
+        "eq1",
+        "domias",
+    ]
+
+    for key in tests:
+        assert key in results["MIA_performance"]
+        assert key in results["MIA_scores"]
+        assert "accuracy" in results["MIA_performance"][key]
+        assert "aucroc" in results["MIA_performance"][key]
