@@ -31,6 +31,7 @@ def GAN_leaks(X_test: np.ndarray, X_G: np.ndarray) -> np.ndarray:
     scores = np.zeros(X_test.shape[0])
     for i, x in enumerate(X_test):
         scores[i] = np.exp(-d_min(x, X_G))
+        assert not np.isinf(scores[i]), f"Found inf: x = {x} X_G = {X_G}"
     return scores
 
 
@@ -40,8 +41,11 @@ def GAN_leaks_cal(X_test: np.ndarray, X_G: np.ndarray, X_ref: np.ndarray) -> np.
     # dependence on (and noise from) whatever model is used
     scores = np.zeros(X_test.shape[0])
     for i, x in enumerate(X_test):
-        print("GAN_leaks_cal", x, X_G.max(), X_ref.max())
         scores[i] = np.exp(-d_min(x, X_G) + d_min(x, X_ref))
+
+        assert not np.isinf(
+            scores[i]
+        ), f"Found inf: x = {x} X_G = {X_G} X_ref = {X_ref}"
     return scores
 
 
@@ -157,7 +161,6 @@ def baselines(
     score["gan_leaks_cal"] = GAN_leaks_cal(X_test, X_G, X_ref_GLC)
     results = {}
     for name, y_scores in score.items():
-        print(name, y_scores)
         acc, auc = compute_metrics_baseline(
             y_scores, Y_test, sample_weight=sample_weight
         )
