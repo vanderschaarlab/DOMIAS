@@ -90,7 +90,7 @@ def hayes_torch(X_test: np.ndarray, X_G: np.ndarray, X_ref: np.ndarray) -> np.nd
     all_y = torch.as_tensor(all_y).long().to(DEVICE)
     X_test = torch.as_tensor(X_test).float().to(DEVICE)
     for training_iter in range(int(300 * len(X_test) / batch_size)):
-        rnd_idx = np.random.choice(len(X_test), batch_size)
+        rnd_idx = np.random.choice(num, batch_size)
         train_x, train_y = all_x[rnd_idx], all_y[rnd_idx]
         clf_out = clf(train_x)
         loss = loss_func(clf_out, train_y)
@@ -159,6 +159,7 @@ def baselines(
     score["gan_leaks_cal"] = GAN_leaks_cal(X_test, X_G, X_ref_GLC)
     results = {}
     for name, y_scores in score.items():
+        print(name, y_scores)
         acc, auc = compute_metrics_baseline(
             y_scores, Y_test, sample_weight=sample_weight
         )
