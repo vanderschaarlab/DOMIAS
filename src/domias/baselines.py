@@ -40,6 +40,7 @@ def GAN_leaks_cal(X_test: np.ndarray, X_G: np.ndarray, X_ref: np.ndarray) -> np.
     # dependence on (and noise from) whatever model is used
     scores = np.zeros(X_test.shape[0])
     for i, x in enumerate(X_test):
+        print("GAN_leaks_cal", x, X_G.max(), X_ref.max())
         scores[i] = np.exp(-d_min(x, X_G) + d_min(x, X_ref))
     return scores
 
@@ -56,7 +57,6 @@ def hayes(X_test: np.ndarray, X_G: np.ndarray, X_ref: np.ndarray) -> np.ndarray:
         np.vstack([X_G[:num], X_ref[:num]]),
         np.concatenate([np.ones(num), np.zeros(num)]),
     )
-    #                                                           np.zeros(X_ref.shape[0])]))
     return clf.predict_proba(X_test)[:, 1]
 
 
