@@ -83,8 +83,7 @@ def get_generator(
             else:
                 raise RuntimeError()
 
-            print("generate clip", self.upper)
-            return samples.clip(lower=self.lower, upper=self.upper)
+            return samples
 
     return LocalGenerator()
 
