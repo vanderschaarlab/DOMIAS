@@ -135,8 +135,6 @@ def kde_baseline(
 def compute_metrics_baseline(
     y_scores: np.ndarray, y_true: np.ndarray, sample_weight: Optional[np.ndarray] = None
 ) -> Tuple[float, float]:
-    # if len(np.unique(y_scores))<=2: # we don't want binarized scores
-    #    raise ValueError('y_scores should contain non-binarized values, but only contains', np.unique(y_scores))
     y_pred = y_scores > np.median(y_scores)
     acc = accuracy_score(y_true, y_pred, sample_weight=sample_weight)
     auc = roc_auc_score(y_true, y_scores, sample_weight=sample_weight)
