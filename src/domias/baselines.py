@@ -31,7 +31,7 @@ def GAN_leaks(X_test: np.ndarray, X_G: np.ndarray) -> np.ndarray:
     scores = np.zeros(X_test.shape[0])
     for i, x in enumerate(X_test):
         scores[i] = np.exp(-d_min(x, X_G))
-        assert not np.isinf(scores[i]), f"Found inf: x = {x} X_G = {X_G}"
+        assert not np.isinf(scores[i]), f"Found inf: -d_min = {-d_min(x, X_G)}"
     return scores
 
 
@@ -45,7 +45,7 @@ def GAN_leaks_cal(X_test: np.ndarray, X_G: np.ndarray, X_ref: np.ndarray) -> np.
 
         assert not np.isinf(
             scores[i]
-        ), f"Found inf: x = {x} X_G = {X_G} X_ref = {X_ref}"
+        ), f"Found inf: -d_min(x, X_G) = {-d_min(x, X_G)} d_min(x, X_ref) = {d_min(x, X_ref)}"
     return scores
 
 
