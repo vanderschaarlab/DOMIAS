@@ -21,7 +21,7 @@ or from source, using
 $ pip install .
 ```
 
-## Sample usage
+## API
 The main API call is
 ```python
 from domias.evaluator import evaluate_performance 
@@ -77,6 +77,8 @@ For each `synthetic_sizes` value, the dictionary contains the keys:
  - "hayes_gan"
  - "eq1"
  - "domias"
+
+## Sample usage
 
 Example for using `evaluate_performance`:
 ```python
