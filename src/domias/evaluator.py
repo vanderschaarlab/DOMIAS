@@ -95,6 +95,8 @@ def evaluate_performance(
             The split for the held-out(addition) dataset out of `dataset`.
         training_epochs: int
             Training epochs
+        synthetic_sizes: List[int]
+            For how many synthetic samples to test the attacks.
         density_estimator: str, default = "prior"
             Which density to use. Available options:
                 * prior
@@ -105,11 +107,28 @@ def evaluate_performance(
         device: PyTorch device
             CPU or CUDA
         shifted_column: Optional[int]
-
+            Shift a column
         zero_quantile: float
+            Threshold for shifting the column.
+        reference_kept_p: float
+            Held-out dataset parameter
 
-
-
+    Returns:
+        A dictionary with a key for each of the `synthetic_sizes` values.
+        For each `synthetic_sizes` value, the dictionary contains the keys:
+            * `MIA_performance` : accuracy and AUCROC for each attack
+            * `MIA_scores`: output scores for each attack
+            * `data`: the evaluation data
+        For both `MIA_performance` and `MIA_scores`, the following attacks are evaluated:
+            * "baseline_eq1"
+            * "baseline_eq2"
+            * "hayes_torch"
+            * "hilprecht"
+            * "gan_leaks"
+            * "gan_leaks_cal"
+            * "hayes_gan"
+            * "eq1"
+            * "domias"
     """
     performance_logger: Dict = {}
 
