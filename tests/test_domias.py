@@ -63,6 +63,9 @@ def get_generator(
             self.model = syn_model
 
         def fit(self, data: pd.DataFrame) -> "LocalGenerator":
+            self.lower = data.min().min()
+            self.upper = data.max().max()
+
             if self.method == "KDE":
                 self.model = stats.gaussian_kde(np.transpose(data))
             else:
@@ -80,7 +83,7 @@ def get_generator(
             else:
                 raise RuntimeError()
 
-            return samples
+            return samples.clip(lower=self.lower, upper=self.upper)
 
     return LocalGenerator()
 

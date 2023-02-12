@@ -24,7 +24,7 @@ $ pip install .
 ## API
 The main API call is
 ```python
-from domias.evaluator import evaluate_performance 
+from domias.evaluator import evaluate_performance
 ```
 
 `evaluate_performance` expects as input a generator which implements the `domias.models.generator.GeneratorInterface` interface, and an evaluation dataset.
@@ -66,7 +66,7 @@ For each `synthetic_sizes` value, the dictionary contains the keys:
  - `MIA_performance` : accuracy and AUCROC for each attack
  - `MIA_scores`: output scores for each attack
  - `data`: the evaluation data
- 
+
  For both `MIA_performance` and `MIA_scores`, the following attacks are evaluated:
  - "baseline_eq1"
  - "baseline_eq2"
