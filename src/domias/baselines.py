@@ -36,9 +36,13 @@ def GAN_leaks(X_test: np.ndarray, X_G: np.ndarray) -> np.ndarray:
 
 
 def GAN_leaks_cal(X_test: np.ndarray, X_G: np.ndarray, X_ref: np.ndarray) -> np.ndarray:
-    # Actually, they retrain a generative model to sample X_ref from.
-    # This doesn't seem necessary to me and creates an additional, unnecessary
-    # dependence on (and noise from) whatever model is used
+    """
+    Note: GAN Leaks trains a new generative model on X_ref to sample from. This leads to 
+    additional dependence on (and noise from) whatever generative model is used. In our 
+    experiments we found the originally proposed method highly unstable, getting consistently better
+    results by replacing the generative step by simply using X_ref directly. This is equally 
+    valid but easier, since X_ref is a sample from the desired distribution already.
+    """
     scores = np.zeros(X_test.shape[0])
     for i, x in enumerate(X_test):
         scores[i] = np.exp(-d_min(x, X_G) + d_min(x, X_ref))
