@@ -256,7 +256,7 @@ def evaluate_performance(
         performance_logger[synthetic_size]["data"]["Xtest"] = X_test_4baseline
         performance_logger[synthetic_size]["data"]["Ytest"] = Y_test_4baseline
 
-        # build another GAN for hayes and GAN_leak_cal
+        # build another GAN for hayes black-box
         ctgan = CTGAN(epochs=training_epochs, pac=1)
         samples.columns = [str(_) for _ in range(dataset.shape[1])]
         ctgan.fit(samples)  # train a CTGAN on the generated examples
@@ -265,14 +265,13 @@ def evaluate_performance(
             raise RuntimeError()
 
         # Baselines
-        X_ref_GLC = ctgan.generate(addition_set.shape[0])
-
+        
         baseline_results, baseline_scores = baselines(
             X_test_4baseline,
             Y_test_4baseline,
             samples.values,
             addition_set,
-            X_ref_GLC,
+            samples.values, # we pass the reference dataset to GAN-leaks CAL for better stability and fairer comparison.
         )
 
         performance_logger[synthetic_size]["MIA_performance"] = baseline_results
