@@ -271,7 +271,7 @@ def evaluate_performance(
             Y_test_4baseline,
             samples.values,
             addition_set,
-            samples.values, # we pass the reference dataset to GAN-leaks CAL for better stability and fairer comparison.
+            addition_set, # we pass the reference dataset to GAN-leaks CAL for better stability and fairer comparison.
         )
 
         performance_logger[synthetic_size]["MIA_performance"] = baseline_results
