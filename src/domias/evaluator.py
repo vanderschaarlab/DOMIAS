@@ -148,10 +148,10 @@ def evaluate_performance(
         dataset[:, shifted_column][dataset[:, shifted_column] == -999.0] = 0.0
         dataset[:, shifted_column][dataset[:, shifted_column] == 999.0] = 1.0
 
-        training_set = dataset[:training_size] # membership set
+        training_set = dataset[:training_size]  # membership set
         training_set = training_set[training_set[:, shifted_column] == 1]
 
-        test_set = dataset[training_size : 2 * training_size] # set of non-members
+        test_set = dataset[training_size : 2 * training_size]  # set of non-members
         test_set = test_set[: len(training_set)]
         reference_set = dataset[-held_out_size:]
         addition_set2 = dataset[-2 * held_out_size : -held_out_size]
@@ -357,7 +357,7 @@ def evaluate_performance(
         )
         fpr, tpr, thresholds = metrics.roc_curve(auc_y, log_p_rel, pos_label=1)
         auc = metrics.auc(fpr, tpr)
-        
+
         if density_estimator == "bnaf":
             performance_logger[synthetic_size]["MIA_performance"]["domias"] = {
                 "accuracy": (p_G_train - p_R_train > thres).sum(0) / training_size,

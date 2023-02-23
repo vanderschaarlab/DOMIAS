@@ -189,7 +189,6 @@ for training_size in args.training_size_list:
 
             acc, auc = compute_metrics_baseline(ctgan_score, Y_test_4baseline)
 
-            
             baseline_results, baseline_scores = baselines(
                 X_test_4baseline,
                 Y_test_4baseline,
