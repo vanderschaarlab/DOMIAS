@@ -154,24 +154,16 @@ def evaluate_performance(
         test_set = dataset[training_size : 2 * training_size]  # set of non-members
         test_set = test_set[: len(training_set)]
         reference_set = dataset[-held_out_size:]
-        addition_set2 = dataset[-2 * held_out_size : -held_out_size]
 
         addition_set_A1 = reference_set[reference_set[:, shifted_column] == 1]
         addition_set_A0 = reference_set[reference_set[:, shifted_column] == 0]
-        addition_set2_A1 = addition_set2[addition_set2[:, shifted_column] == 1]
-        addition_set2_A0 = addition_set2[addition_set2[:, shifted_column] == 0]
         addition_set_A0_kept = addition_set_A0[
             : int(len(addition_set_A0) * reference_kept_p)
         ]
-        addition_set2_A0_kept = addition_set2_A0[
-            : int(len(addition_set2_A0) * reference_kept_p)
-        ]
         if reference_kept_p > 0:
             reference_set = np.concatenate((addition_set_A1, addition_set_A0_kept), 0)
-            addition_set2 = np.concatenate((addition_set2_A1, addition_set2_A0_kept), 0)
         else:
             reference_set = addition_set_A1
-            addition_set2 = addition_set2_A1
             # test_set = test_set_A1
 
         training_size = len(training_set)
@@ -181,13 +173,11 @@ def evaluate_performance(
         training_set = np.delete(training_set, shifted_column, 1)
         test_set = np.delete(test_set, shifted_column, 1)
         reference_set = np.delete(reference_set, shifted_column, 1)
-        addition_set2 = np.delete(addition_set2, shifted_column, 1)
         dataset = np.delete(dataset, shifted_column, 1)
     else:
         training_set = dataset[:training_size]
         test_set = dataset[training_size : 2 * training_size]
         reference_set = dataset[-held_out_size:]
-        addition_set2 = dataset[-2 * held_out_size : -held_out_size]
 
     """ 3. Synthesis with the GeneratorInferface"""
     df = pd.DataFrame(training_set)
@@ -221,9 +211,7 @@ def evaluate_performance(
                 samples_val.values[int(0.5 * synthetic_size) :],
             )
             _data, model_data = density_estimator_trainer(
-                reference_set,
-                addition_set2[: int(0.5 * held_out_size)],
-                addition_set2[: int(0.5 * held_out_size)],
+                reference_set
             )
             p_G_train = (
                 compute_log_p_x(

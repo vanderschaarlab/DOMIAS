@@ -125,13 +125,13 @@ def test_sanity(
     assert "MIA_scores" in results
 
     tests = [
-        "baseline_eq1",
-        "baseline_eq2",
-        "hayes_torch",
-        "hilprecht",
+        "ablated_eq1",
+        "ablated_eq2",
+        "LOGAN_D1",
+        "MC",
         "gan_leaks",
         "gan_leaks_cal",
-        "hayes_gan",
+        "LOGAN_0",
         "eq1",
         "domias",
     ]

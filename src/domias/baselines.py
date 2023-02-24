@@ -138,7 +138,7 @@ def baselines(
     sample_weight: Optional[np.ndarray] = None,
 ) -> Tuple[dict, dict]:
     score = {}
-    score["baseline_eq1"], score["baseline_eq2"] = kde_baseline(X_test, X_G, X_ref)
+    score["ablated_eq1"], score["ablated_eq2"] = kde_baseline(X_test, X_G, X_ref)
     score["LOGAN_D1"] = LOGAN_D1(X_test, X_G, X_ref)
     score["MC"] = MC(X_test, X_G)
     score["gan_leaks"] = GAN_leaks(X_test, X_G)
