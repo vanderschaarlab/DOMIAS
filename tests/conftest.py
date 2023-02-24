@@ -1,10 +1,14 @@
-"""
-    Dummy conftest.py for domias.
+# stdlib
+import random
 
-    If you don't know what this is for, just leave it empty.
-    Read more about conftest.py under:
-    - https://docs.pytest.org/en/stable/fixture.html
-    - https://docs.pytest.org/en/stable/writing_plugins.html
-"""
+# third party
+import numpy as np
+import pytest
+import torch
 
-# import pytest
+
+@pytest.fixture(autouse=True)
+def run_before() -> None:
+    np.random.seed(0)
+    torch.manual_seed(0)
+    random.seed(0)

@@ -210,9 +210,7 @@ def evaluate_performance(
                 samples_val.values[: int(0.5 * synthetic_size)],
                 samples_val.values[int(0.5 * synthetic_size) :],
             )
-            _data, model_data = density_estimator_trainer(
-                reference_set
-            )
+            _data, model_data = density_estimator_trainer(reference_set)
             p_G_train = (
                 compute_log_p_x(
                     model_gen, torch.as_tensor(training_set).float().to(device)
