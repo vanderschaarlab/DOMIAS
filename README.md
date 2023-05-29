@@ -187,4 +187,18 @@ pytest -vsx
 ```
 ## Citing
 
-TODO
+```
+@inproceedings{breugel2023domias,
+  title = 	 {Membership Inference Attacks against Synthetic Data through Overfitting Detection},
+  author =       {van Breugel, Boris and Sun, Hao and Qian, Zhaozhi and van der Schaar, Mihaela},
+  booktitle = 	 {Proceedings of The 26th International Conference on Artificial Intelligence and Statistics},
+  pages = 	 {3493--3514},
+  year = 	 {2023},
+  volume = 	 {206},
+  series = 	 {Proceedings of Machine Learning Research},
+  month = 	 {25--27 Apr},
+  publisher =    {PMLR},
+  pdf = 	 {https://proceedings.mlr.press/v206/breugel23a/breugel23a.pdf},
+  url = 	 {https://proceedings.mlr.press/v206/breugel23a.html}}
+}
+```
